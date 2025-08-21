@@ -7,7 +7,6 @@ use crate::error::{SttError, SttResult};
 use log::{info, warn};
 use std::path::Path;
 
-#[cfg(feature = "audio-processing")]
 use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
 
 /// 音频数据结构
@@ -100,7 +99,6 @@ impl AudioData {
 }
 
 /// 从WAV文件读取音频数据
-#[cfg(feature = "audio-processing")]
 pub fn read_wav_file<P: AsRef<Path>>(path: P) -> SttResult<AudioData> {
     let path = path.as_ref();
 
@@ -158,16 +156,8 @@ pub fn read_wav_file<P: AsRef<Path>>(path: P) -> SttResult<AudioData> {
     Ok(AudioData::new(samples, config))
 }
 
-/// 不支持音频处理功能时的占位符实现
-#[cfg(not(feature = "audio-processing"))]
-pub fn read_wav_file<P: AsRef<Path>>(_path: P) -> SttResult<AudioData> {
-    Err(SttError::ConfigError(
-        "WAV文件读取功能需要启用 'audio-processing' 特性".to_string(),
-    ))
-}
 
 /// 将音频数据写入WAV文件
-#[cfg(feature = "audio-processing")]
 pub fn write_wav_file<P: AsRef<Path>>(audio: &AudioData, path: P) -> SttResult<()> {
     let path = path.as_ref();
 
@@ -226,13 +216,6 @@ pub fn write_wav_file<P: AsRef<Path>>(audio: &AudioData, path: P) -> SttResult<(
     Ok(())
 }
 
-/// 不支持音频处理功能时的占位符实现
-#[cfg(not(feature = "audio-processing"))]
-pub fn write_wav_file<P: AsRef<Path>>(_audio: &AudioData, _path: P) -> SttResult<()> {
-    Err(SttError::ConfigError(
-        "WAV文件写入功能需要启用 'audio-processing' 特性".to_string(),
-    ))
-}
 
 /// 检测音频文件格式
 pub fn detect_audio_format<P: AsRef<Path>>(path: P) -> Option<AudioFormat> {

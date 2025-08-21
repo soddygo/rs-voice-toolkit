@@ -7,7 +7,6 @@ use crate::error::{SttError, SttResult};
 use log::{info, warn};
 use std::path::{Path, PathBuf};
 
-#[cfg(feature = "audio-processing")]
 use ez_ffmpeg::{FfmpegContext, FfmpegScheduler};
 
 /// 音频转换器
@@ -118,7 +117,6 @@ impl AudioConverter {
     }
 
     /// 使用 FFmpeg 进行音频转换
-    #[cfg(feature = "audio-processing")]
     async fn convert_with_ffmpeg<P: AsRef<Path>>(
         &self,
         input_path: P,
@@ -151,17 +149,6 @@ impl AudioConverter {
         Ok(())
     }
 
-    /// 不支持音频处理功能时的占位符实现
-    #[cfg(not(feature = "audio-processing"))]
-    async fn convert_with_ffmpeg<P: AsRef<Path>>(
-        &self,
-        _input_path: P,
-        _output_path: P,
-    ) -> SttResult<()> {
-        Err(SttError::ConfigError(
-            "音频转换功能需要启用 'audio-processing' 特性".to_string(),
-        ))
-    }
 
     /// 批量转换音频文件
     pub async fn convert_batch(

@@ -1351,6 +1351,7 @@ dependencies = [
  "rs-voice-toolkit-audio",
  "rs-voice-toolkit-stt",
  "rs-voice-toolkit-tts",
+ "thiserror 2.0.16",
  "tokio",
 ]
 

@@ -33,7 +33,7 @@ async fn main() {
 
     // 预热一次，避免首次加载影响
     println!("预热中...");
-    let _ = stt::transcribe_file(&model, &audio).await;
+    let _ = rs_voice_toolkit_stt::transcribe_file(&model, &audio).await;
     println!("预热完成\n");
 
     let mut metrics = PerformanceMetrics::new();
@@ -47,7 +47,7 @@ async fn main() {
         let start_time = Instant::now();
 
         // 执行转录
-        let result = stt::transcribe_file(&model, &audio)
+        let result = rs_voice_toolkit_stt::transcribe_file(&model, &audio)
             .await
             .expect("转录失败");
 

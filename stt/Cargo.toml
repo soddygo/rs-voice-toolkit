@@ -16,7 +16,7 @@ keywords = ["speech", "whisper", "audio", "transcription", "stt"]
 [dependencies]
 # 从workspace继承依赖
 whisper-rs = { workspace = true }
-ez-ffmpeg = { workspace = true, optional = true }
+ez-ffmpeg = { workspace = true }
 hound = { workspace = true }
 rubato = { workspace = true }
 tokio = { workspace = true }
@@ -29,10 +29,8 @@ sysinfo = "0.30"
 audio_utils = { path = "../audio", package = "rs-voice-toolkit-audio", version = "0.1.0" }
 
 [features]
-default = ["audio-processing"]
+default = []
 streaming = []
-ez-ffmpeg = ["dep:ez-ffmpeg"]
-audio-processing = ["dep:ez-ffmpeg"]
 
 [dev-dependencies]
 env_logger = { workspace = true }

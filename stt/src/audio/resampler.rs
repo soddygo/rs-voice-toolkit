@@ -6,7 +6,6 @@ use super::AudioConfig;
 use crate::error::{SttError, SttResult};
 use log::info;
 
-#[cfg(feature = "audio-processing")]
 use rubato::{
     Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
@@ -59,7 +58,6 @@ impl AudioResampler {
     }
 
     /// 重采样音频数据
-    #[cfg(feature = "audio-processing")]
     pub fn resample(&self, input: &[f32]) -> SttResult<Vec<f32>> {
         if !self.needs_resampling() {
             info!("采样率相同，无需重采样");
@@ -122,13 +120,6 @@ impl AudioResampler {
         Ok(output)
     }
 
-    /// 不支持音频处理功能时的占位符实现
-    #[cfg(not(feature = "audio-processing"))]
-    pub fn resample(&self, _input: &[f32]) -> SttResult<Vec<f32>> {
-        Err(SttError::ConfigError(
-            "音频重采样功能需要启用 'audio-processing' 特性".to_string(),
-        ))
-    }
 
     /// 重采样音频数据（i16格式）
     pub fn resample_i16(&self, input: &[i16]) -> SttResult<Vec<i16>> {
@@ -148,7 +139,6 @@ impl AudioResampler {
     }
 
     /// 批量重采样（流式处理）
-    #[cfg(feature = "audio-processing")]
     pub fn resample_streaming(&self, input_chunks: Vec<&[f32]>) -> SttResult<Vec<f32>> {
         if !self.needs_resampling() {
             // 如果不需要重采样，直接连接所有块
@@ -169,13 +159,6 @@ impl AudioResampler {
         Ok(all_output)
     }
 
-    /// 不支持音频处理功能时的流式重采样占位符
-    #[cfg(not(feature = "audio-processing"))]
-    pub fn resample_streaming(&self, _input_chunks: Vec<&[f32]>) -> SttResult<Vec<f32>> {
-        Err(SttError::ConfigError(
-            "流式音频重采样功能需要启用 'audio-processing' 特性".to_string(),
-        ))
-    }
 }
 
 /// 重采样质量设置
@@ -228,7 +211,6 @@ impl AdvancedResampler {
     }
 
     /// 使用指定质量进行重采样
-    #[cfg(feature = "audio-processing")]
     pub fn resample_with_quality(&self, input: &[f32]) -> SttResult<Vec<f32>> {
         if !self.base.needs_resampling() {
             return Ok(input.to_vec());
@@ -286,11 +268,4 @@ impl AdvancedResampler {
         Ok(output)
     }
 
-    /// 不支持音频处理功能时的占位符
-    #[cfg(not(feature = "audio-processing"))]
-    pub fn resample_with_quality(&self, _input: &[f32]) -> SttResult<Vec<f32>> {
-        Err(SttError::ConfigError(
-            "高质量音频重采样功能需要启用 'audio-processing' 特性".to_string(),
-        ))
-    }
 }

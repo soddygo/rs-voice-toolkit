@@ -73,6 +73,88 @@ pub enum AudioError {
     Other(String),
 }
 
+/// 音频格式枚举
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AudioFormat {
+    Wav,
+    Mp3,
+    Flac,
+    M4a,
+    Ogg,
+}
+
+impl AudioFormat {
+    /// 从文件扩展名推断音频格式
+    pub fn from_extension(ext: &str) -> Option<Self> {
+        match ext.to_lowercase().as_str() {
+            "wav" => Some(AudioFormat::Wav),
+            "mp3" => Some(AudioFormat::Mp3),
+            "flac" => Some(AudioFormat::Flac),
+            "m4a" => Some(AudioFormat::M4a),
+            "ogg" => Some(AudioFormat::Ogg),
+            _ => None,
+        }
+    }
+
+    /// 获取格式的文件扩展名
+    pub fn extension(&self) -> &'static str {
+        match self {
+            AudioFormat::Wav => "wav",
+            AudioFormat::Mp3 => "mp3",
+            AudioFormat::Flac => "flac",
+            AudioFormat::M4a => "m4a",
+            AudioFormat::Ogg => "ogg",
+        }
+    }
+
+    /// 检查格式是否被Whisper原生支持
+    pub fn is_whisper_native(&self) -> bool {
+        matches!(self, AudioFormat::Wav)
+    }
+}
+
+/// 音频参数配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioConfig {
+    /// 采样率 (Hz)
+    pub sample_rate: u32,
+    /// 声道数
+    pub channels: u16,
+    /// 位深度
+    pub bit_depth: u16,
+}
+
+impl Default for AudioConfig {
+    fn default() -> Self {
+        Self {
+            sample_rate: 16000, // Whisper 推荐的采样率
+            channels: 1,        // 单声道
+            bit_depth: 16,      // 16位
+        }
+    }
+}
+
+impl AudioConfig {
+    /// 创建新的音频配置
+    pub fn new(sample_rate: u32, channels: u16, bit_depth: u16) -> Self {
+        Self {
+            sample_rate,
+            channels,
+            bit_depth,
+        }
+    }
+
+    /// 创建Whisper优化的配置
+    pub fn whisper_optimized() -> Self {
+        Self::default()
+    }
+
+    /// 检查配置是否与Whisper兼容
+    pub fn is_whisper_compatible(&self) -> bool {
+        self.sample_rate == 16000 && self.channels == 1
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioMeta {
     pub sample_rate: u32,
@@ -642,5 +724,58 @@ mod tests {
             stream_out.len()
         );
         assert!(diff <= 2000);
+    }
+
+    #[test]
+    fn test_extreme_sample_rates() {
+        // 测试超高的采样率
+        let input: Vec<f32> = vec![0.0, 1.0, 0.0, -1.0];
+        
+        // 测试超高采样率 (接近上限)
+        let result = resample(&input, 192000, 16000);
+        assert!(result.is_ok(), "192kHz 到 16kHz 重采样应该成功");
+        
+        // 测试超过上限的采样率
+        let result = resample(&input, 200000, 16000);
+        assert!(result.is_ok(), "200kHz 到 16kHz 重采样应该成功（虽然超过文档上限但实际可能工作）");
+        
+        // 测试极低采样率
+        let result = resample(&input, 8000, 16000);
+        assert!(result.is_ok(), "8kHz 到 16kHz 重采样应该成功");
+        
+        // 测试相同采样率
+        let result = resample(&input, 16000, 16000);
+        assert!(result.is_ok(), "16kHz 到 16kHz 重采样应该成功");
+        assert_eq!(result.unwrap().samples, input, "相同采样率应该返回原始样本");
+    }
+
+    #[test]
+    fn test_basic_resampling_functionality() {
+        // 测试基本的重采样功能
+        let input: Vec<f32> = (0..1000).map(|i| (i as f32 * 0.01).sin()).collect();
+        
+        // 测试降采样
+        let result = resample(&input, 16000, 8000);
+        assert!(result.is_ok(), "降采样应该成功");
+        let downsampled = result.unwrap();
+        assert!(!downsampled.samples.is_empty(), "降采样应该产生非空输出");
+        assert_eq!(downsampled.sample_rate, 8000, "输出采样率应该正确");
+        
+        // 测试升采样
+        let result = resample(&input, 8000, 16000);
+        assert!(result.is_ok(), "升采样应该成功");
+        let upsampled = result.unwrap();
+        assert!(!upsampled.samples.is_empty(), "升采样应该产生非空输出");
+        assert_eq!(upsampled.sample_rate, 16000, "输出采样率应该正确");
+        
+        // 测试相同采样率
+        let result = resample(&input, 16000, 16000);
+        assert!(result.is_ok(), "相同采样率重采样应该成功");
+        let same_rate = result.unwrap();
+        assert_eq!(same_rate.samples, input, "相同采样率应该返回原始样本");
+        assert_eq!(same_rate.sample_rate, 16000, "输出采样率应该正确");
+        
+        println!("基本重采样功能测试通过 - 降采样: {} -> {} 样本, 升采样: {} -> {} 样本",
+                input.len(), downsampled.samples.len(), input.len(), upsampled.samples.len());
     }
 }

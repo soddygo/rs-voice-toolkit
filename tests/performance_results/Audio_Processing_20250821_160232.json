@@ -1,0 +1,16 @@
+{
+  "test_name": "Audio_Processing",
+  "timestamp": "2025-08-21T16:02:32.177424+00:00",
+  "rtf": 0.010272727272727272,
+  "processing_time_ms": 113,
+  "audio_duration_ms": 11000,
+  "peak_memory_mb": 0.0,
+  "avg_memory_mb": 0.0,
+  "latency_ms": null,
+  "model_size_mb": null,
+  "metadata": {
+    "sample_rate": "16000",
+    "channels": "1",
+    "audio_file": "jfk.wav"
+  }
+}

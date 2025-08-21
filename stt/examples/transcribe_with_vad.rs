@@ -4,7 +4,7 @@
 
 use std::env;
 use std::path::PathBuf;
-use stt::{
+use rs_voice_toolkit_stt::{
     audio::utils::read_wav_file,
     whisper::{WhisperConfig, WhisperTranscriber},
 };

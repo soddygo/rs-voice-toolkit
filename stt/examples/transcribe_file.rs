@@ -1,7 +1,7 @@
 use log::{info, warn};
 use std::env;
 use std::path::PathBuf;
-use stt::transcribe_file;
+use rs_voice_toolkit_stt::transcribe_file;
 
 /// 文件转录示例
 /// 用法: cargo run -p stt --example transcribe_file -- <model_path> <audio_path>

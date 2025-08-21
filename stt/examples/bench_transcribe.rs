@@ -22,14 +22,14 @@ async fn main() {
     println!("迭代次数: {iters}");
 
     // 预热一次，避免首次加载影响
-    let _ = stt::transcribe_file(&model, &audio).await;
+    let _ = rs_voice_toolkit_stt::transcribe_file(&model, &audio).await;
 
     let mut total_rt_factor = 0.0f64;
     let mut total_ms = 0u128;
 
     for i in 0..iters {
         let t0 = Instant::now();
-        let result = stt::transcribe_file(&model, &audio)
+        let result = rs_voice_toolkit_stt::transcribe_file(&model, &audio)
             .await
             .expect("转录失败");
         let dt = t0.elapsed().as_millis();

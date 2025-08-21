@@ -20,6 +20,7 @@ streaming = ["stt", "rs-voice-toolkit-stt/streaming"]
 rs-voice-toolkit-stt = { path = "../stt", optional = true, version = "0.1.0" }
 rs-voice-toolkit-tts = { path = "../tts", optional = true, version = "0.1.0" }
 rs-voice-toolkit-audio = { path = "../audio", optional = true, version = "0.1.0" }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

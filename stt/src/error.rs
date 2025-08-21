@@ -66,16 +66,14 @@ impl From<whisper_rs::WhisperError> for SttError {
     }
 }
 
-/// 从hound错误转换（如果启用了音频处理功能）
-#[cfg(feature = "audio-processing")]
+/// 从hound错误转换
 impl From<hound::Error> for SttError {
     fn from(err: hound::Error) -> Self {
         SttError::AudioFileError(err.to_string())
     }
 }
 
-/// 从rubato错误转换（如果启用了音频处理功能）
-#[cfg(feature = "audio-processing")]
+/// 从rubato错误转换
 impl From<rubato::ResampleError> for SttError {
     fn from(err: rubato::ResampleError) -> Self {
         SttError::ResamplingError(err.to_string())

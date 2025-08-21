@@ -2,10 +2,10 @@ use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use stt::audio::utils::read_wav_file;
-use stt::{self, AudioConfig};
+use rs_voice_toolkit_stt::audio::utils::read_wav_file;
+use rs_voice_toolkit_stt::{self, AudioConfig};
 #[cfg(feature = "streaming")]
-use stt::{create_custom_streaming_transcriber, StreamingConfig, StreamingEvent};
+use rs_voice_toolkit_stt::{create_custom_streaming_transcriber, StreamingConfig, StreamingEvent};
 
 #[cfg(feature = "streaming")]
 #[tokio::main]
