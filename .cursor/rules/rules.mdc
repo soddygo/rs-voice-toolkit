@@ -1,0 +1,180 @@
+---
+alwaysApply: true
+---
+
+工程规则（Rules）
+=================
+
+目标与范围
+----------
+- 优先交付 STT（文件/实时）稳定、简洁、离线可用的能力；TTS 为可选模块（Index-TTS）。
+- 工程定位为通用 Rust 库（workspace 多子库），对上“易集成、少依赖、可扩展”。
+
+架构与模块
+----------
+- workspace 子库独立：
+  - `stt/`：语音转文本（Whisper）
+  - `audio/`：轻量音频工具（探测/转码/重采样，基于 `ez-ffmpeg`）
+  - `tts/`：文本转语音（Index-TTS 引擎）
+- 示例放在 `examples/`；规格文档在 `specs/`；最小模型与音频在 `fixtures/`。
+
+依赖与系统要求
+--------------
+- 核心依赖：`whisper-rs`、`ez-ffmpeg`、`tokio`、`serde`、`thiserror`、`log`。
+- 系统依赖：FFmpeg（供 `ez-ffmpeg` 使用）；Index-TTS（可执行文件，TTS 需要）。
+- 平台：macOS / Linux / Windows；优先 CPU 推理（后续可探索 GPU）。
+- 参考：`ez-ffmpeg` 仓库 https://github.com/YeautyYE/ez-ffmpeg
+
+API 设计原则
+------------
+- 简洁、通用、开箱即用：少参数+合理默认值；错误使用 `Result` 返回，不 panic；日志降噪可控。
+- STT：`transcribe_file` / `transcribe_samples` / `StreamingTranscriber`；
+  音频工具：`probe` / `ensure_whisper_compatible` / `resample`。
+- TTS：`TtsService`（Index-TTS），支持内存与落盘输出。
+
+STT 文件转录规则
+----------------
+- 输入支持常见格式；内部必须转换为 `mono/16k/PCM16 WAV`（`audio::ensure_whisper_compatible` → `ez-ffmpeg`）。
+- 模型路径必须有效；默认模型由接入方提供（例如 `ggml-tiny/base`）。
+- 需记录 RTF（处理时间/音频时长）用于性能评估。
+
+STT 实时转录规则（详见 `specs/streaming.md`）
+------------------------------------------
+- 分块/滑窗：默认 500ms，可配置；缓冲区滑动保证连续性。
+- VAD：默认开启（阈值 0.01），可 `--no-vad` 关闭；阈值需随噪声调优。
+- LocalAgreement-n：默认 n=3，仅输出被 n 次前缀一致性确认的“新增文本”；n≥2。
+- 异步解耦：采集与推理通过 `mpsc` 通道解耦，互不阻塞；保留背压/降级空间。
+- 边界：静音超时清空缓冲；禁止输出空/重复结果；后续可加入时间戳与增量标记。
+
+TTS（Index-TTS）规则
+-------------------
+- `language` 默认 `auto`；默认 `sample_rate=22050`；可配置 `executable_path`/`speaker`/`sample_rate`。
+- 若未设置 `executable_path`，必须能从 PATH 找到 `index-tts`；失败需返回清晰错误。
+- 支持 `synthesize_to_memory`（stdout）与 `synthesize_to_file`（--output）；如平台不支持 stdout，应回退落盘方案。
+
+性能与资源（详见 `specs/perf.md`）
+-------------------------------
+- 目标：
+  - 文件转录处理时间 < 音频时长 20%
+  - 实时转录端到端延迟 < 3s
+  - 内存 < 1GB（含模型）
+- 方法：提供可重复的基准示例与记录；优先使用小/量化模型；重用 context/state。
+
+工程与质量
+----------
+- CI 必须包含：`cargo build`、`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`（全特性）。
+- 风格：使用 rustfmt；clippy 零阻断（对暂未使用的字段/方法仅可精确 `#[allow]`）。
+- 错误：`thiserror` 分类；日志使用 `log`，默认降噪，不输出敏感路径。
+- 测试：
+  - STT/Audio 单测覆盖核心路径与失败路径
+  - Streaming 聚合策略（LocalAgreement）必须有单测覆盖边界
+  - 示例可端到端运行（依赖 fixtures）。
+
+示例与工具
+----------
+- `fixtures/get-fixtures.sh` 下载最小模型与样例音频；README 必须指向 fixtures 使用方法。
+- 示例：
+  - 文件转录：`stt/examples/transcribe_file.rs`
+  - 流式转录：`stt/examples/streaming_transcribe.rs`（支持 `--no-vad` / `--n` / `--chunk-ms`）
+  - TTS 合成：`tts/examples/synthesize.rs`
+  - 性能基准：`stt/examples/bench_transcribe.rs`
+
+扩展与规划
+----------
+- 可加入更精确 VAD（如 webrtc-vad）、拼接/标点修复、时间戳输出、Piper/Coqui 等 TTS 引擎。
+- 性能基线在 `perf.md` 版本化沉淀，重大改动需更新。
+
+合规与发布
+----------
+- 语义化版本；发布前 checklist：构建/测试/示例/文档/性能记录齐全。
+- 依赖许可需与项目 License（MIT/Apache-2.0）兼容；文档需清晰标注模型/引擎来源。
+
+
+工程规则（Rules）
+=================
+
+目标与范围
+----------
+- 优先交付 STT（文件/实时）稳定、简洁、离线可用的能力；TTS 为可选模块（Index-TTS）。
+- 工程定位为通用 Rust 库（workspace 多子库），对上“易集成、少依赖、可扩展”。
+
+架构与模块
+----------
+- workspace 子库独立：
+  - `stt/`：语音转文本（Whisper）
+  - `audio/`：轻量音频工具（探测/转码/重采样，基于 `ez-ffmpeg`）
+  - `tts/`：文本转语音（Index-TTS 引擎）
+- 示例放在 `examples/`；规格文档在 `specs/`；最小模型与音频在 `fixtures/`。
+
+依赖与系统要求
+--------------
+- 核心依赖：`whisper-rs`、`ez-ffmpeg`、`tokio`、`serde`、`thiserror`、`log`。
+- 系统依赖：FFmpeg（供 `ez-ffmpeg` 使用）；Index-TTS（可执行文件，TTS 需要）。
+- 平台：macOS / Linux / Windows；优先 CPU 推理（后续可探索 GPU）。
+- 参考：`ez-ffmpeg` 仓库 https://github.com/YeautyYE/ez-ffmpeg
+
+API 设计原则
+------------
+- 简洁、通用、开箱即用：少参数+合理默认值；错误使用 `Result` 返回，不 panic；日志降噪可控。
+- STT：`transcribe_file` / `transcribe_samples` / `StreamingTranscriber`；
+  音频工具：`probe` / `ensure_whisper_compatible` / `resample`。
+- TTS：`TtsService`（Index-TTS），支持内存与落盘输出。
+
+STT 文件转录规则
+----------------
+- 输入支持常见格式；内部必须转换为 `mono/16k/PCM16 WAV`（`audio::ensure_whisper_compatible` → `ez-ffmpeg`）。
+- 模型路径必须有效；默认模型由接入方提供（例如 `ggml-tiny/base`）。
+- 需记录 RTF（处理时间/音频时长）用于性能评估。
+
+STT 实时转录规则（详见 `specs/streaming.md`）
+------------------------------------------
+- 分块/滑窗：默认 500ms，可配置；缓冲区滑动保证连续性。
+- VAD：默认开启（阈值 0.01），可 `--no-vad` 关闭；阈值需随噪声调优。
+- LocalAgreement-n：默认 n=3，仅输出被 n 次前缀一致性确认的“新增文本”；n≥2。
+- 异步解耦：采集与推理通过 `mpsc` 通道解耦，互不阻塞；保留背压/降级空间。
+- 边界：静音超时清空缓冲；禁止输出空/重复结果；后续可加入时间戳与增量标记。
+
+TTS（Index-TTS）规则
+-------------------
+- `language` 默认 `auto`；默认 `sample_rate=22050`；可配置 `executable_path`/`speaker`/`sample_rate`。
+- 若未设置 `executable_path`，必须能从 PATH 找到 `index-tts`；失败需返回清晰错误。
+- 支持 `synthesize_to_memory`（stdout）与 `synthesize_to_file`（--output）；如平台不支持 stdout，应回退落盘方案。
+
+性能与资源（详见 `specs/perf.md`）
+-------------------------------
+- 目标：
+  - 文件转录处理时间 < 音频时长 20%
+  - 实时转录端到端延迟 < 3s
+  - 内存 < 1GB（含模型）
+- 方法：提供可重复的基准示例与记录；优先使用小/量化模型；重用 context/state。
+
+工程与质量
+----------
+- CI 必须包含：`cargo build`、`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`（全特性）。
+- 风格：使用 rustfmt；clippy 零阻断（对暂未使用的字段/方法仅可精确 `#[allow]`）。
+- 错误：`thiserror` 分类；日志使用 `log`，默认降噪，不输出敏感路径。
+- 测试：
+  - STT/Audio 单测覆盖核心路径与失败路径
+  - Streaming 聚合策略（LocalAgreement）必须有单测覆盖边界
+  - 示例可端到端运行（依赖 fixtures）。
+
+示例与工具
+----------
+- `fixtures/get-fixtures.sh` 下载最小模型与样例音频；README 必须指向 fixtures 使用方法。
+- 示例：
+  - 文件转录：`stt/examples/transcribe_file.rs`
+  - 流式转录：`stt/examples/streaming_transcribe.rs`（支持 `--no-vad` / `--n` / `--chunk-ms`）
+  - TTS 合成：`tts/examples/synthesize.rs`
+  - 性能基准：`stt/examples/bench_transcribe.rs`
+
+扩展与规划
+----------
+- 可加入更精确 VAD（如 webrtc-vad）、拼接/标点修复、时间戳输出、Piper/Coqui 等 TTS 引擎。
+- 性能基线在 `perf.md` 版本化沉淀，重大改动需更新。
+
+合规与发布
+----------
+- 语义化版本；发布前 checklist：构建/测试/示例/文档/性能记录齐全。
+- 依赖许可需与项目 License（MIT/Apache-2.0）兼容；文档需清晰标注模型/引擎来源。
+
+

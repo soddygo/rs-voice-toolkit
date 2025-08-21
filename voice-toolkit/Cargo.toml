@@ -1,0 +1,29 @@
+[package]
+name = "voice-toolkit"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme.workspace = true
+rust-version.workspace = true
+description = "Rust 语音工具库，提供语音转文本(STT)和文本转语音(TTS)功能"
+
+[features]
+default = ["stt", "audio"]
+stt = ["dep:rs-voice-toolkit-stt"]
+tts = ["dep:rs-voice-toolkit-tts"]
+audio = ["dep:rs-voice-toolkit-audio"]
+streaming = ["stt", "rs-voice-toolkit-stt/streaming"]
+
+[dependencies]
+rs-voice-toolkit-stt = { path = "../stt", optional = true, version = "0.1.0" }
+rs-voice-toolkit-tts = { path = "../tts", optional = true, version = "0.1.0" }
+rs-voice-toolkit-audio = { path = "../audio", optional = true, version = "0.1.0" }
+
+[dev-dependencies]
+tokio = { workspace = true }

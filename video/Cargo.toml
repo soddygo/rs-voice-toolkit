@@ -1,0 +1,26 @@
+[package]
+name = "video"
+version = "0.1.0"
+edition = "2024"
+description = "Video processing module for rs-voice-toolkit using FFmpeg"
+license = "MIT OR Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ez-ffmpeg = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+env_logger = { workspace = true }
+rs-voice-toolkit-stt = { path = "../stt" }
+
+[features]
+default = ["audio-extraction"]
+audio-extraction = []
+video-processing = []

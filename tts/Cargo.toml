@@ -1,0 +1,32 @@
+[package]
+name = "rs-voice-toolkit-tts"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+rust-version.workspace = true
+description = "Text-to-Speech module for rs-voice-toolkit"
+keywords = ["tts", "speech", "synthesis", "audio"]
+categories = ["multimedia::audio"]
+
+[lib]
+name = "rs_voice_toolkit_tts"
+path = "src/lib.rs"
+
+[dependencies]
+# TTS相关依赖将在未来规划中添加
+serde = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+which = "6"
+async-trait = "0.1"
+
+[features]
+default = []
+# 未来可能的特性
+# piper = ["onnxruntime"]
+# rten = ["rten"]

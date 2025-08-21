@@ -1,0 +1,49 @@
+[workspace]
+members = [
+    "voice-toolkit",
+    "stt",
+    "tts",
+    "audio",
+    "tests",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["rs-voice-toolkit contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-username/rs-voice-toolkit"
+homepage = "https://github.com/your-username/rs-voice-toolkit"
+documentation = "https://docs.rs/voice-toolkit"
+keywords = ["speech", "audio", "whisper", "stt", "tts"]
+categories = ["multimedia::audio", "api-bindings"]
+readme = "README.md"
+rust-version = "1.70"
+
+[workspace.dependencies]
+# 语音转文本核心依赖
+whisper-rs = "0.15"
+
+# 音频处理
+ez-ffmpeg = "0.5"
+hound = "3.5"                # WAV文件处理
+rubato = "0.16"              # 音频重采样
+
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+
+# 序列化和错误处理
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+
+# 日志
+log = "0.4"
+env_logger = "0.11"
+
+# 实用工具
+clap = { version = "4.0", features = ["derive"] }  # 命令行参数解析
+anyhow = "1.0"               # 错误处理
+tracing = "0.1"              # 结构化日志
+tracing-subscriber = "0.3"   # 日志订阅器
+rand = "0.9"                 # 随机数生成

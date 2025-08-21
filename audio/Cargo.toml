@@ -1,0 +1,27 @@
+[package]
+name = "rs-voice-toolkit-audio"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+rust-version.workspace = true
+description = "Lightweight audio processing helpers for rs-voice-toolkit (probe/convert/resample)"
+keywords = ["audio", "ffmpeg", "resample", "convert"]
+categories = ["multimedia::audio"]
+
+[lib]
+name = "rs_voice_toolkit_audio"
+path = "src/lib.rs"
+
+[dependencies]
+ez-ffmpeg = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+log = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+hound = { workspace = true }
+rubato = { workspace = true }
+

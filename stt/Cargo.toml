@@ -1,0 +1,44 @@
+[package]
+name = "rs-voice-toolkit-stt"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+categories.workspace = true
+readme.workspace = true
+rust-version.workspace = true
+description = "A Rust library for speech-to-text processing using Whisper"
+keywords = ["speech", "whisper", "audio", "transcription", "stt"]
+
+[dependencies]
+# 从workspace继承依赖
+whisper-rs = { workspace = true }
+ez-ffmpeg = { workspace = true, optional = true }
+hound = { workspace = true }
+rubato = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+sysinfo = "0.30"
+audio_utils = { path = "../audio", package = "rs-voice-toolkit-audio", version = "0.1.0" }
+
+[features]
+default = ["audio-processing"]
+streaming = []
+ez-ffmpeg = ["dep:ez-ffmpeg"]
+audio-processing = ["dep:ez-ffmpeg"]
+
+[dev-dependencies]
+env_logger = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+
+[lib]
+name = "rs_voice_toolkit_stt"
+path = "src/lib.rs"
