@@ -1,16 +1,13 @@
 [package]
 name = "rs-voice-toolkit-audio"
-version.workspace = true
+version = "0.1.0"
+description = "Audio processing utilities for rs-voice-toolkit"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/rs-voice-toolkit"
+keywords = ["audio", "processing", "resampling", "wav"]
+categories = ["multimedia::audio"]
 edition.workspace = true
 authors.workspace = true
-license.workspace = true
-repository.workspace = true
-homepage.workspace = true
-documentation.workspace = true
-rust-version.workspace = true
-description = "Lightweight audio processing helpers for rs-voice-toolkit (probe/convert/resample)"
-keywords = ["audio", "ffmpeg", "resample", "convert"]
-categories = ["multimedia::audio"]
 
 [lib]
 name = "rs_voice_toolkit_audio"

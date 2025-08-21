@@ -284,7 +284,7 @@ impl StreamingTranscriber {
                 let mut batch = Vec::new();
                 let mut batch_size = 0;
                 const MAX_BATCH_SIZE: usize = 8192; // 约0.17秒@48kHz
-                
+
                 // 收集一批音频数据
                 loop {
                     match audio_rx.try_recv() {
@@ -299,12 +299,12 @@ impl StreamingTranscriber {
                         Err(TryRecvError::Disconnected) => return,
                     }
                 }
-                
+
                 // 批量写入缓冲区
                 if !batch.is_empty() {
                     buffer.lock().unwrap().push_samples(&batch);
                 }
-                
+
                 // 短暂休眠避免CPU占用过高
                 sleep(Duration::from_millis(10)).await;
             }
@@ -427,7 +427,7 @@ impl StreamingTranscriber {
         *self.is_running.lock().unwrap() = false;
         self.event_sender = None;
         self.audio_sender = None;
-        
+
         // 取消任务（非阻塞）
         if let Some(handle) = self.audio_task_handle.take() {
             handle.abort();
@@ -436,13 +436,13 @@ impl StreamingTranscriber {
             handle.abort();
         }
     }
-    
+
     /// 异步停止流式转录并等待任务完成
     pub async fn stop_streaming_async(&mut self) {
         *self.is_running.lock().unwrap() = false;
         self.event_sender = None;
         self.audio_sender = None;
-        
+
         // 等待任务完成
         if let Some(handle) = self.audio_task_handle.take() {
             let _ = handle.await;

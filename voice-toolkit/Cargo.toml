@@ -1,17 +1,13 @@
 [package]
 name = "voice-toolkit"
-version.workspace = true
+version = "0.1.0"
+description = "A comprehensive Rust toolkit for voice processing including STT, TTS, and audio utilities"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/rs-voice-toolkit"
+keywords = ["voice", "speech", "audio", "stt", "tts"]
+categories = ["multimedia::audio"]
 edition.workspace = true
 authors.workspace = true
-license.workspace = true
-repository.workspace = true
-homepage.workspace = true
-documentation.workspace = true
-keywords.workspace = true
-categories.workspace = true
-readme.workspace = true
-rust-version.workspace = true
-description = "Rust 语音工具库，提供语音转文本(STT)和文本转语音(TTS)功能"
 
 [features]
 default = ["stt", "audio"]
