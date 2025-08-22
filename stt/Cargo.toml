@@ -17,8 +17,8 @@ keywords = ["speech", "whisper", "audio", "transcription", "stt"]
 [dependencies]
 # 从workspace继承依赖
 whisper-rs = { workspace = true }
-ez-ffmpeg = { workspace = true }
 hound = { workspace = true }
+ffmpeg-sidecar = { workspace = true }
 rubato = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }

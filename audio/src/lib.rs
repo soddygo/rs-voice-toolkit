@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-#[cfg(feature = "ffmpeg")]
-use ez_ffmpeg::{FfmpegContext, FfmpegScheduler};
+
+use ffmpeg_sidecar::{command::FfmpegCommand};
 use hound::WavReader;
 use rubato::{
     Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
@@ -227,7 +227,7 @@ pub fn probe<P: AsRef<std::path::Path>>(input: P) -> Result<AudioMeta, AudioErro
     })
 }
 
-#[cfg(feature = "ffmpeg")]
+
 pub fn ensure_whisper_compatible<P: AsRef<Path>>(
     input: P,
     output: Option<PathBuf>,
@@ -255,24 +255,22 @@ pub fn ensure_whisper_compatible<P: AsRef<Path>>(
         temp
     };
 
-    // Build FFmpeg context: input → filter (force mono/16k/s16) → output wav
-    // Note: depends on system FFmpeg; filter uses aformat to unify sample format/channels/sample rate
+    // Use ffmpeg-sidecar for better cross-platform support and auto-download
     let filter = "aformat=sample_fmts=s16:channel_layouts=mono:sample_rates=16000";
 
-    let context = FfmpegContext::builder()
-        .input(in_path.to_string_lossy().to_string())
-        .filter_desc(filter)
-        .output(out_path.to_string_lossy().to_string())
-        .build()
-        .map_err(|e| AudioError::FfmpegConfig(format!("Failed to build FFmpeg context: {e}")))?;
+    let status = FfmpegCommand::new()
+        .input(in_path.to_string_lossy())
+        .args(["-filter:a", filter])
+        .overwrite()
+        .output(out_path.to_string_lossy())
+        .spawn()?
+        .wait()?;
 
-    let scheduler = FfmpegScheduler::new(context)
-        .start()
-        .map_err(|e| AudioError::FfmpegExecution(format!("Failed to start FFmpeg task: {e}")))?;
-
-    scheduler
-        .wait()
-        .map_err(|e| AudioError::FfmpegExecution(format!("FFmpeg conversion failed: {e}")))?;
+    if !status.success() {
+        return Err(AudioError::FfmpegExecution(
+            "FFmpeg conversion failed".to_string(),
+        ));
+    }
 
     // Verify output file
     let reader = WavReader::open(&out_path).map_err(|e| AudioError::DecodeError {
@@ -304,15 +302,6 @@ pub fn ensure_whisper_compatible<P: AsRef<Path>>(
     Ok(CompatibleWav { path: out_path })
 }
 
-#[cfg(not(feature = "ffmpeg"))]
-pub fn ensure_whisper_compatible<P: AsRef<Path>>(
-    _input: P,
-    _output: Option<PathBuf>,
-) -> Result<CompatibleWav, AudioError> {
-    Err(AudioError::FfmpegNotAvailable(
-        "FFmpeg support not compiled in. Enable 'ffmpeg' feature.".to_string(),
-    ))
-}
 
 pub fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Result<Resampled, AudioError> {
     if from_rate == 0 {
@@ -595,7 +584,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ffmpeg")]
     fn test_ensure_whisper_compatible_on_fixture() {
         // Locate fixtures audio
         let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));

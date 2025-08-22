@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use ez_ffmpeg::{FfmpegContext, FfmpegScheduler};
+use ffmpeg_sidecar::command::FfmpegCommand;
 
 /// 视频处理模块的错误类型
 #[derive(Error, Debug)]
@@ -101,10 +101,10 @@ impl VideoProcessor {
             return Err(VideoError::FileNotFound(input.display().to_string()));
         }
         
-        // 构建 FFmpeg 上下文
-        let mut context_builder = FfmpegContext::builder()
-            .input(input.to_string_lossy().as_ref())
-            .output(output.to_string_lossy().as_ref());
+        // 使用 ffmpeg-sidecar 进行音频提取
+        let mut command = FfmpegCommand::new()
+            .input(input)
+            .overwrite();
         
         // 构建过滤器描述
         let mut filter_parts = Vec::new();
@@ -119,21 +119,20 @@ impl VideoProcessor {
             filter_parts.push(format!("pan={}c", channels));
         }
         
-        // 如果有过滤器，添加到上下文
+        // 如果有过滤器，添加到命令
         if !filter_parts.is_empty() {
-            context_builder = context_builder.filter_desc(filter_parts.join(","));
+            command = command.args(["-filter:a", &filter_parts.join(",")]);
         }
         
-        let context = context_builder.build()
-            .map_err(|e| VideoError::FfmpegError(format!("构建FFmpeg上下文失败: {}", e)))?;
-        
         // 执行命令
-        let scheduler = FfmpegScheduler::new(context).start()
-            .map_err(|e| VideoError::FfmpegError(format!("启动FFmpeg失败: {}", e)))?;
-        
-        // 等待完成
-        scheduler.wait()
-            .map_err(|e| VideoError::FfmpegError(format!("FFmpeg执行失败: {}", e)))?;
+        let status = command
+            .output(output.to_string_lossy())
+            .spawn()?
+            .wait()?;
+
+        if !status.success() {
+            return Err(VideoError::FfmpegError("FFmpeg转换失败".to_string()));
+        }
         
         // 如果执行到这里说明成功完成
         log::info!("音频提取成功: {} -> {}", input.display(), output.display());

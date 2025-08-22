@@ -26,9 +26,9 @@ rust-version = "1.70"
 whisper-rs = "0.15"
 
 # 音频处理
-ez-ffmpeg = "0.5"
 hound = "3.5"                # WAV文件处理
 rubato = "0.16"              # 音频重采样
+ffmpeg-sidecar = "2.1"       # FFmpeg wrapper with auto-download
 
 # 异步运行时
 tokio = { version = "1.0", features = ["full"] }

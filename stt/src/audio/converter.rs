@@ -7,7 +7,7 @@ use crate::error::{SttError, SttResult};
 use log::{info, warn};
 use std::path::{Path, PathBuf};
 
-use ez_ffmpeg::{FfmpegContext, FfmpegScheduler};
+use ffmpeg_sidecar::command::FfmpegCommand;
 
 /// 音频转换器
 pub struct AudioConverter {
@@ -127,24 +127,22 @@ impl AudioConverter {
 
         info!("开始音频转换: {} -> {}", input.display(), output.display());
 
-        // 构建 FFmpeg 上下文（使用 aformat 统一到 s16/mono/16k）
+        // 使用 ffmpeg-sidecar 进行音频转换
         let filter = "aformat=sample_fmts=s16:channel_layouts=mono:sample_rates=16000";
-        let context = FfmpegContext::builder()
-            .input(input.to_string_lossy().to_string())
-            .filter_desc(filter)
-            .output(output.to_string_lossy().to_string())
-            .build()
-            .map_err(|e| SttError::AudioProcessingError(format!("构建FFmpeg上下文失败: {e}")))?;
+        
+        let status = FfmpegCommand::new()
+            .input(input.to_string_lossy())
+            .args(["-filter:a", filter])
+            .overwrite()
+            .output(output.to_string_lossy())
+            .spawn()?
+            .wait()?;
 
-        // 执行转换
-        let scheduler = FfmpegScheduler::new(context)
-            .start()
-            .map_err(|e| SttError::AudioProcessingError(format!("启动FFmpeg失败: {e}")))?;
-
-        // 等待完成
-        scheduler
-            .wait()
-            .map_err(|e| SttError::AudioProcessingError(format!("FFmpeg执行失败: {e}")))?;
+        if !status.success() {
+            return Err(SttError::AudioProcessingError(
+                "FFmpeg转换失败".to_string(),
+            ));
+        }
 
         Ok(())
     }

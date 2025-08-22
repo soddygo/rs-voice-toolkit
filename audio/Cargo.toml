@@ -19,16 +19,14 @@ features = []
 name = "rs_voice_toolkit_audio"
 path = "src/lib.rs"
 
+
 [dependencies]
-ez-ffmpeg = { workspace = true, optional = true }
 thiserror = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 log = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 hound = { workspace = true }
 rubato = { workspace = true }
+ffmpeg-sidecar = { workspace = true }
 
-[features]
-default = ["ffmpeg"]
-ffmpeg = ["dep:ez-ffmpeg"]
 
