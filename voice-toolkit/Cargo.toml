@@ -15,6 +15,10 @@ stt = ["dep:rs-voice-toolkit-stt"]
 tts = ["dep:rs-voice-toolkit-tts"]
 audio = ["dep:rs-voice-toolkit-audio"]
 streaming = ["stt", "rs-voice-toolkit-stt/streaming"]
+# GPU 加速特性
+cuda = ["stt", "rs-voice-toolkit-stt/cuda"]
+vulkan = ["stt", "rs-voice-toolkit-stt/vulkan"]
+metal = ["stt", "rs-voice-toolkit-stt/metal"]
 
 [dependencies]
 rs-voice-toolkit-stt = { optional = true, version = "0.3.0", path = "../stt" }

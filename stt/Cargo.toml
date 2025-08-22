@@ -33,6 +33,15 @@ audio_utils = { package = "rs-voice-toolkit-audio", version = "0.3.0", path = ".
 default = []
 streaming = []
 
+# ===================================================================
+#  核心后端特性 (Core Backend Features)
+#  这些是您在Docker脚本中可以直接使用的特性
+#  例如: `cargo build --features cuda`
+# ===================================================================
+cuda = ["whisper-rs/cuda"]
+vulkan = ["whisper-rs/vulkan"]
+metal = ["whisper-rs/metal", "whisper-rs/coreml"]
+
 [dev-dependencies]
 env_logger = { workspace = true }
 rand = { workspace = true }
