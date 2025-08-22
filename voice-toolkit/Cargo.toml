@@ -1,9 +1,9 @@
 [package]
 name = "voice-toolkit"
-version = "0.1.0"
+version = "0.2.0"
 description = "A comprehensive Rust toolkit for voice processing including STT, TTS, and audio utilities"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/your-org/rs-voice-toolkit"
+repository = "https://github.com/soddygo/rs-voice-toolkit"
 keywords = ["voice", "speech", "audio", "stt", "tts"]
 categories = ["multimedia::audio"]
 edition.workspace = true
@@ -17,9 +17,9 @@ audio = ["dep:rs-voice-toolkit-audio"]
 streaming = ["stt", "rs-voice-toolkit-stt/streaming"]
 
 [dependencies]
-rs-voice-toolkit-stt = { path = "../stt", optional = true, version = "0.1.0" }
-rs-voice-toolkit-tts = { path = "../tts", optional = true, version = "0.1.0" }
-rs-voice-toolkit-audio = { path = "../audio", optional = true, version = "0.1.0" }
+rs-voice-toolkit-stt = { optional = true, version = "0.1.0" }
+rs-voice-toolkit-tts = { optional = true, version = "0.1.0" }
+rs-voice-toolkit-audio = { optional = true, version = "0.1.0" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

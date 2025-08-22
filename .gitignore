@@ -1,4 +1,3 @@
 /target
-fixtures/models/ggml-tiny.bin
-tests/performance_results/Audio_Processing_20250821_124317.json
-tests/performance_results/STT_File_Transcription_20250821_124317.json
+fixtures/models/*
+tests/performance_results/*
