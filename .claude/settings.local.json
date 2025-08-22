@@ -13,7 +13,9 @@
       "Bash(git push:*)",
       "Bash(git checkout:*)",
       "Bash(cargo package:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(make bump-version:*)",
+      "Bash(make help:*)"
     ],
     "deny": [],
     "ask": []

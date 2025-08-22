@@ -26,7 +26,7 @@ log = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 sysinfo = "0.30"
-audio_utils = { package = "rs-voice-toolkit-audio", version = "0.3.0", path = "../audio" }
+audio_utils = { package = "rs-voice-toolkit-audio", version = "0.4.0", path = "../audio" }
 
 [features]
 default = []

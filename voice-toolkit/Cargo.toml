@@ -21,9 +21,9 @@ vulkan = ["stt", "rs-voice-toolkit-stt/vulkan"]
 metal = ["stt", "rs-voice-toolkit-stt/metal"]
 
 [dependencies]
-rs-voice-toolkit-stt = { optional = true, version = "0.3.0", path = "../stt" }
-rs-voice-toolkit-tts = { optional = true, version = "0.3.0", path = "../tts" }
-rs-voice-toolkit-audio = { optional = true, version = "0.3.0", path = "../audio" }
+rs-voice-toolkit-stt = { optional = true, version = "0.4.0", path = "../stt" }
+rs-voice-toolkit-tts = { optional = true, version = "0.4.0", path = "../tts" }
+rs-voice-toolkit-audio = { optional = true, version = "0.4.0", path = "../audio" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
