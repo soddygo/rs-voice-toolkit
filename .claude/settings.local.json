@@ -10,7 +10,10 @@
       "Bash(grep:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(cargo package:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
