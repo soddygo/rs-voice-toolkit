@@ -1,6 +1,6 @@
 [package]
 name = "voice-toolkit"
-version = "0.3.0"
+version = "0.4.0"
 description = "A comprehensive Rust toolkit for voice processing including STT, TTS, and audio utilities"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/soddygo/rs-voice-toolkit"
