@@ -1,11 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cargo build:*)",
-      "Bash(cargo doc:*)",
-      "Bash(cargo test:*)",
+      "Bash(cargo:*)",
       "Bash(find:*)",
-      "Bash(cargo publish:*)",
       "Bash(chmod:*)",
       "Bash(grep:*)",
       "Bash(git add:*)",
@@ -14,8 +11,10 @@
       "Bash(git checkout:*)",
       "Bash(cargo package:*)",
       "Bash(git restore:*)",
-      "Bash(make bump-version:*)",
-      "Bash(make help:*)"
+      "Bash(make:*)",
+      "Bash(echo:*)",
+      "Bash(bash:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

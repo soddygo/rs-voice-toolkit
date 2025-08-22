@@ -1,6 +1,6 @@
 [package]
 name = "voice-toolkit"
-version = "0.5.0"
+version = "0.7.0"
 description = "A comprehensive Rust toolkit for voice processing including STT, TTS, and audio utilities"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/soddygo/rs-voice-toolkit"
@@ -21,9 +21,9 @@ vulkan = ["stt", "rs-voice-toolkit-stt/vulkan"]
 metal = ["stt", "rs-voice-toolkit-stt/metal"]
 
 [dependencies]
-rs-voice-toolkit-stt = { optional = true, version = "0.5.0", path = "../stt" }
-rs-voice-toolkit-tts = { optional = true, version = "0.5.0", path = "../tts" }
-rs-voice-toolkit-audio = { optional = true, version = "0.5.0", path = "../audio" }
+rs-voice-toolkit-stt = { optional = true, version = "0.7.0", path = "../stt" }
+rs-voice-toolkit-tts = { optional = true, version = "0.7.0", path = "../tts" }
+rs-voice-toolkit-audio = { optional = true, version = "0.7.0", path = "../audio" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

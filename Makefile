@@ -53,18 +53,24 @@ publish-all: publish-crates publish-main
 # Publish sub-crates (audio, tts, stt)
 publish-crates:
 	@echo "Publishing sub-crates..."
-	@for crate in $(CRATES); do \
+	@for crate in audio tts stt; do \
 		echo "Publishing $$crate..."; \
-		cd "$$crate" && cargo publish --allow-dirty; \
-		if [ $$? -ne 0 ]; then \
-			echo "Failed to publish $$crate"; \
+		if [ ! -d "$$crate" ]; then \
+			echo "Error: Directory $$crate does not exist!"; \
 			exit 1; \
 		fi; \
-		echo "$$crate published successfully"; \
-		echo "Waiting 30 seconds for crates.io to update..."; \
-		sleep 30; \
+		(cd "$$crate" && cargo publish --allow-dirty); \
+		if [ $$? -ne 0 ]; then \
+			echo "Warning: Failed to publish $$crate (may already be published)"; \
+			echo "Continuing with next crate..."; \
+		else \
+			echo "$$crate published successfully"; \
+			echo "Waiting for crates.io to update (press Ctrl+C to skip waiting)..."; \
+			echo "Note: You can use 'cargo publish --no-verify' to skip waiting, but this is not recommended"; \
+			sleep 10; \
+		fi; \
 	done
-	@echo "All sub-crates published successfully"
+	@echo "Sub-crates publishing completed"
 
 # Publish main crate (voice-toolkit)
 publish-main:
