@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+#[cfg(feature = "ffmpeg")]
 use ez_ffmpeg::{FfmpegContext, FfmpegScheduler};
 use hound::WavReader;
 use rubato::{
@@ -13,63 +14,63 @@ use rubato::{
 
 #[derive(Debug, Error)]
 pub enum AudioError {
-    #[error("I/O 错误: {0}")]
+    #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
-    // FFmpeg 相关错误
-    #[error("FFmpeg 不可用: {0}")]
+    // FFmpeg related errors
+    #[error("FFmpeg not available: {0}")]
     FfmpegNotAvailable(String),
-    #[error("FFmpeg 执行失败: {0}")]
+    #[error("FFmpeg execution failed: {0}")]
     FfmpegExecution(String),
-    #[error("FFmpeg 配置错误: {0}")]
+    #[error("FFmpeg configuration error: {0}")]
     FfmpegConfig(String),
 
-    // 格式和编解码错误
-    #[error("格式不支持: {format}, 支持的格式: {supported}")]
+    // Format and codec errors
+    #[error("Format not supported: {format}, supported formats: {supported}")]
     FormatNotSupported { format: String, supported: String },
-    #[error("解码失败: {reason}")]
+    #[error("Decode failed: {reason}")]
     DecodeError { reason: String },
-    #[error("编码失败: {reason}")]
+    #[error("Encode failed: {reason}")]
     EncodeError { reason: String },
-    #[error("音频文件损坏或格式错误: {0}")]
+    #[error("Audio file corrupted or malformed: {0}")]
     CorruptedFile(String),
 
-    // 参数和配置错误
-    #[error("采样率不匹配: 期望 {expected}, 实际 {actual}")]
+    // Parameter and configuration errors
+    #[error("Sample rate mismatch: expected {expected}, got {actual}")]
     SampleRateMismatch { expected: u32, actual: u32 },
-    #[error("通道数不匹配: 期望 {expected}, 实际 {actual}")]
+    #[error("Channel count mismatch: expected {expected}, got {actual}")]
     ChannelMismatch { expected: u16, actual: u16 },
-    #[error("无效的采样率: {rate}, 必须在 {min}-{max} 范围内")]
+    #[error("Invalid sample rate: {rate}, must be between {min}-{max}")]
     InvalidSampleRate { rate: u32, min: u32, max: u32 },
-    #[error("无效的通道数: {channels}, 必须在 {min}-{max} 范围内")]
+    #[error("Invalid channel count: {channels}, must be between {min}-{max}")]
     InvalidChannelCount { channels: u16, min: u16, max: u16 },
-    #[error("参数错误: {0}")]
+    #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
-    #[error("缓冲区大小无效: {size}, 必须大于 {min}")]
+    #[error("Invalid buffer size: {size}, must be greater than {min}")]
     InvalidBufferSize { size: usize, min: usize },
 
-    // 文件系统错误
-    #[error("文件不存在: {0}")]
+    // Filesystem errors
+    #[error("File not found: {0}")]
     FileNotFound(String),
-    #[error("路径不是文件: {0}")]
+    #[error("Path is not a file: {0}")]
     NotAFile(String),
-    #[error("权限不足: {0}")]
+    #[error("Permission denied: {0}")]
     PermissionDenied(String),
-    #[error("磁盘空间不足: {0}")]
+    #[error("Insufficient disk space: {0}")]
     InsufficientSpace(String),
 
-    // 处理错误
-    #[error("重采样失败: {0}")]
+    // Processing errors
+    #[error("Resampling failed: {0}")]
     ResampleError(String),
-    #[error("音频处理失败: {0}")]
+    #[error("Audio processing failed: {0}")]
     ProcessingError(String),
-    #[error("内存不足: {0}")]
+    #[error("Out of memory: {0}")]
     OutOfMemory(String),
-    #[error("操作超时: {0}")]
+    #[error("Operation timeout: {0}")]
     Timeout(String),
 
-    // 通用错误
-    #[error("未知错误: {0}")]
+    // Generic errors
+    #[error("Unknown error: {0}")]
     Other(String),
 }
 
@@ -226,13 +227,14 @@ pub fn probe<P: AsRef<std::path::Path>>(input: P) -> Result<AudioMeta, AudioErro
     })
 }
 
+#[cfg(feature = "ffmpeg")]
 pub fn ensure_whisper_compatible<P: AsRef<Path>>(
     input: P,
     output: Option<PathBuf>,
 ) -> Result<CompatibleWav, AudioError> {
     let in_path = input.as_ref();
 
-    // 基础校验
+    // Basic validation
     if !in_path.exists() {
         return Err(AudioError::FileNotFound(format!("{}", in_path.display())));
     }
@@ -240,7 +242,7 @@ pub fn ensure_whisper_compatible<P: AsRef<Path>>(
         return Err(AudioError::NotAFile(format!("{}", in_path.display())));
     }
 
-    // 决定输出路径
+    // Determine output path
     let out_path = if let Some(p) = output {
         p
     } else {
@@ -253,8 +255,8 @@ pub fn ensure_whisper_compatible<P: AsRef<Path>>(
         temp
     };
 
-    // 构建 FFmpeg 上下文：输入 → 过滤（强制 mono/16k/s16）→ 输出 wav
-    // 注：依赖系统 FFmpeg；filter 基于 aformat 统一采样格式/通道/采样率
+    // Build FFmpeg context: input → filter (force mono/16k/s16) → output wav
+    // Note: depends on system FFmpeg; filter uses aformat to unify sample format/channels/sample rate
     let filter = "aformat=sample_fmts=s16:channel_layouts=mono:sample_rates=16000";
 
     let context = FfmpegContext::builder()
@@ -262,19 +264,19 @@ pub fn ensure_whisper_compatible<P: AsRef<Path>>(
         .filter_desc(filter)
         .output(out_path.to_string_lossy().to_string())
         .build()
-        .map_err(|e| AudioError::FfmpegConfig(format!("构建 FFmpeg 上下文失败: {e}")))?;
+        .map_err(|e| AudioError::FfmpegConfig(format!("Failed to build FFmpeg context: {e}")))?;
 
     let scheduler = FfmpegScheduler::new(context)
         .start()
-        .map_err(|e| AudioError::FfmpegExecution(format!("启动 FFmpeg 任务失败: {e}")))?;
+        .map_err(|e| AudioError::FfmpegExecution(format!("Failed to start FFmpeg task: {e}")))?;
 
     scheduler
         .wait()
-        .map_err(|e| AudioError::FfmpegExecution(format!("FFmpeg 转换失败: {e}")))?;
+        .map_err(|e| AudioError::FfmpegExecution(format!("FFmpeg conversion failed: {e}")))?;
 
-    // 验证输出文件
+    // Verify output file
     let reader = WavReader::open(&out_path).map_err(|e| AudioError::DecodeError {
-        reason: format!("验证输出 WAV 失败: {e}"),
+        reason: format!("Failed to verify output WAV: {e}"),
     })?;
     let spec = reader.spec();
 
@@ -294,12 +296,22 @@ pub fn ensure_whisper_compatible<P: AsRef<Path>>(
 
     if spec.bits_per_sample != 16 {
         return Err(AudioError::FormatNotSupported {
-            format: format!("{}位 PCM", spec.bits_per_sample),
-            supported: "16位 PCM".to_string(),
+            format: format!("{} bit PCM", spec.bits_per_sample),
+            supported: "16 bit PCM".to_string(),
         });
     }
 
     Ok(CompatibleWav { path: out_path })
+}
+
+#[cfg(not(feature = "ffmpeg"))]
+pub fn ensure_whisper_compatible<P: AsRef<Path>>(
+    _input: P,
+    _output: Option<PathBuf>,
+) -> Result<CompatibleWav, AudioError> {
+    Err(AudioError::FfmpegNotAvailable(
+        "FFmpeg support not compiled in. Enable 'ffmpeg' feature.".to_string(),
+    ))
 }
 
 pub fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Result<Resampled, AudioError> {
@@ -583,27 +595,28 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ffmpeg")]
     fn test_ensure_whisper_compatible_on_fixture() {
-        // 定位 fixtures 音频
+        // Locate fixtures audio
         let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let root_dir = crate_dir.parent().expect("audio crate has parent");
         let input = root_dir.join("fixtures/audio/jfk.wav");
         if !input.exists() {
-            eprintln!("跳过: 缺少测试音频 {}", input.display());
+            eprintln!("Skipping: missing test audio {}", input.display());
             return;
         }
 
-        let out = ensure_whisper_compatible(&input, None).expect("转换应成功");
-        assert!(out.path.exists(), "输出文件应存在");
+        let out = ensure_whisper_compatible(&input, None).expect("Conversion should succeed");
+        assert!(out.path.exists(), "Output file should exist");
 
-        // 验证 WAV 头参数 mono/16k/PCM16
-        let reader = WavReader::open(&out.path).expect("应能打开输出 WAV");
+        // Verify WAV header parameters mono/16k/PCM16
+        let reader = WavReader::open(&out.path).expect("Should be able to open output WAV");
         let spec = reader.spec();
         assert_eq!(spec.sample_rate, 16000);
         assert_eq!(spec.channels, 1);
         assert_eq!(spec.bits_per_sample, 16);
 
-        // 清理输出文件
+        // Clean up output file
         let _ = std::fs::remove_file(&out.path);
     }
 
@@ -625,20 +638,24 @@ mod tests {
 
     #[test]
     fn test_ensure_whisper_compatible_errors() {
-        // 不存在的文件
+        // Non-existent file
         let missing = std::path::PathBuf::from("/tmp/__definitely_missing_audio__.wav");
-        let err = ensure_whisper_compatible(&missing, None).expect_err("应返回错误");
+        let err = ensure_whisper_compatible(&missing, None).expect_err("Should return error");
+        
+        // With FFmpeg feature: FileNotFound, without FFmpeg: FfmpegNotAvailable
         match err {
-            AudioError::FileNotFound(_) => {}
-            _ => panic!("应为 FileNotFound 错误"),
+            AudioError::FileNotFound(_) | AudioError::FfmpegNotAvailable(_) => {}
+            _ => panic!("Should be FileNotFound or FfmpegNotAvailable error"),
         }
 
-        // 路径是目录
+        // Path is directory
         let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let err2 = ensure_whisper_compatible(&crate_dir, None).expect_err("应返回错误");
+        let err2 = ensure_whisper_compatible(&crate_dir, None).expect_err("Should return error");
+        
+        // With FFmpeg feature: NotAFile, without FFmpeg: FfmpegNotAvailable
         match err2 {
-            AudioError::NotAFile(_) => {}
-            _ => panic!("应为 NotAFile 错误"),
+            AudioError::NotAFile(_) | AudioError::FfmpegNotAvailable(_) => {}
+            _ => panic!("Should be NotAFile or FfmpegNotAvailable error"),
         }
     }
 

@@ -5,12 +5,49 @@ rs-voice-toolkit
 [![Documentation](https://docs.rs/voice-toolkit/badge.svg)](https://docs.rs/voice-toolkit)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE-MIT)
 
-**Version: 0.1.0** - Initial Release
+**Version: 0.3.0** - Unified Voice Processing Toolkit
 
-Rust 语音处理工具库（Workspace），专注于简洁、通用、易集成：
-- **STT**：基于 Whisper 的语音转文本，支持文件和流式处理
-- **TTS**：基于 Index-TTS 的文本转语音合成
-- **Audio**：基于 ez-ffmpeg 的轻量音频处理和格式转换
+A comprehensive Rust toolkit for voice processing with unified API, featuring Speech-to-Text (STT), Text-to-Speech (TTS), and audio utilities.
+
+## 🚀 Core Features
+
+### 🎤 Speech-to-Text (STT)
+- **Whisper Integration**: High-quality speech recognition using OpenAI's Whisper models
+- **File Transcription**: Process audio files with automatic format conversion
+- **Streaming Support**: Real-time audio streaming with low latency
+- **VAD Integration**: Voice Activity Detection for efficient processing
+- **Performance Monitoring**: Built-in benchmarking and performance metrics
+
+### 🔊 Text-to-Speech (TTS)  
+- **Index-TTS Engine**: High-quality speech synthesis
+- **Extensible Architecture**: Support for multiple TTS engines
+- **Flexible Output**: Generate audio to memory buffers or files
+- **Multi-format Support**: Output in various audio formats
+
+### 🎵 Audio Processing
+- **Format Conversion**: Convert between audio formats (WAV, MP3, FLAC, M4A, OGG)
+- **Resampling**: High-quality audio resampling with rubato library
+- **Whisper Compatibility**: Automatic conversion to Whisper-compatible format (mono, 16kHz, 16-bit PCM)
+- **Metadata Extraction**: Probe audio files for technical information
+- **FFmpeg Integration**: Leverages system FFmpeg for robust format support
+
+## 📦 Feature Flags
+
+The toolkit supports optional features via Cargo feature flags:
+
+```toml
+[dependencies]
+voice-toolkit = { version = "0.3.0", features = ["stt", "tts", "audio"] }
+```
+
+### Available Features:
+- **`stt`**: Speech-to-Text functionality (enabled by default)
+- **`tts`**: Text-to-Speech functionality
+- **`audio`**: Audio processing utilities (enabled by default)
+- **`streaming`**: Real-time streaming transcription (requires `stt`)
+
+### Default Features:
+The default feature set includes `stt` and `audio` for comprehensive voice processing capabilities.
 
 快速开始
 --------
@@ -61,18 +98,6 @@ cargo run -p stt --example transcribe_file -- <模型路径> <音频文件>
 - **voice-toolkit/**: 统一接口库
   - 所有模块的统一导出
   - 简化的 API 接口
-
-## 版本历史
-
-### v0.1.0 (2024-01-20) - 初始发布
-- ✅ 完整的 STT 功能（文件和流式转录）
-- ✅ TTS 合成功能（Index-TTS 集成）
-- ✅ 音频处理工具（格式转换、重采样）
-- ✅ 流式转录支持（实时处理）
-- ✅ VAD 集成（静音检测）
-- ✅ 性能基线测试
-- ✅ 完整的文档和示例
-- ✅ 集成测试覆盖
 
 更多设计与任务见 specs/design.md 与 specs/tasks.md。
 
