@@ -1,7 +1,7 @@
 [package]
 name = "rs-voice-toolkit-stt"
 version = "0.3.0"
-publish = false
+# publish = false
 edition.workspace = true
 authors.workspace = true
 license.workspace = true

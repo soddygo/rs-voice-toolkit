@@ -1,7 +1,7 @@
 [package]
 name = "rs-voice-toolkit-audio"
 version = "0.3.0"
-publish = false
+# publish = false
 description = "Audio processing utilities for rs-voice-toolkit"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/soddygo/rs-voice-toolkit"
