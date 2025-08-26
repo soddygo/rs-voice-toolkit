@@ -15,8 +15,9 @@ pub use audio::{AudioConfig, AudioData, AudioFormat};
 // 导入Whisper转录模块
 pub mod whisper;
 pub use whisper::{
-    transcribe_file, transcribe_file_with_language, TranscriptionResult, TranscriptionSegment,
-    WhisperConfig, WhisperTranscriber,
+    transcribe_file, transcribe_file_with_config, transcribe_file_with_language,
+    transcribe_file_with_transcriber, TranscriptionResult, TranscriptionSegment, WhisperConfig,
+    WhisperTranscriber,
 };
 
 // 导入VAD模块
