@@ -8,6 +8,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 use rs_voice_toolkit_stt;
+use log::info;
 #[cfg(feature = "streaming")]
 use rs_voice_toolkit_stt::{StreamingConfig, StreamingTranscriber, StreamingEvent};
 use rs_voice_toolkit_tts;
@@ -44,21 +45,21 @@ async fn test_stt_file_to_text_integration() {
     let (model_path, audio_path) = match check_test_fixtures() {
         Ok(paths) => paths,
         Err(e) => {
-            eprintln!("跳过 STT 集成测试: {}", e);
+            log::warn!("跳过 STT 集成测试: {}", e);
             return;
         }
     };
     
-    println!("开始 STT 集成测试...");
-    println!("模型: {}", model_path.display());
-    println!("音频: {}", audio_path.display());
+    info!("开始 STT 集成测试...");
+    info!("模型: {}", model_path.display());
+    info!("音频: {}", audio_path.display());
     
     // 测试文件转录
     let result = rs_voice_toolkit_stt::transcribe_file(&model_path, &audio_path).await;
     
     match result {
         Ok(transcription) => {
-            println!("转录成功: {}", transcription.text);
+            info!("转录成功: {}", transcription.text);
             
             // 验证转录结果
             assert!(!transcription.text.trim().is_empty(), "转录文本不应为空");
@@ -75,12 +76,12 @@ async fn test_stt_file_to_text_integration() {
                                   text_lower.contains("do");
             
             if contains_keywords {
-                println!("✓ 转录内容包含预期关键词");
+                info!("✓ 转录内容包含预期关键词");
             } else {
-                println!("⚠ 转录内容未包含预期关键词，但测试仍然通过");
+                info!("⚠ 转录内容未包含预期关键词，但测试仍然通过");
             }
             
-            println!("✓ STT 集成测试通过");
+            info!("✓ STT 集成测试通过");
         }
         Err(e) => {
             panic!("STT 集成测试失败: {}", e);
@@ -94,22 +95,22 @@ async fn test_audio_processing_integration() {
     let (_, audio_path) = match check_test_fixtures() {
         Ok(paths) => paths,
         Err(e) => {
-            eprintln!("跳过音频处理集成测试: {}", e);
+            log::warn!("跳过音频处理集成测试: {}", e);
             return;
         }
     };
     
-    println!("开始音频处理集成测试...");
+    info!("开始音频处理集成测试...");
     
     // 测试音频信息探测
     let probe_result = rs_voice_toolkit_audio::probe(&audio_path);
     match probe_result {
         Ok(info) => {
-            println!("音频信息: {:?}", info);
+            info!("音频信息: {:?}", info);
             if let Some(duration_ms) = info.duration_ms {
                 assert!(duration_ms > 0, "音频时长应大于 0");
             }
-            println!("✓ 音频探测成功");
+            info!("✓ 音频探测成功");
         }
         Err(e) => {
             panic!("音频探测失败: {}", e);
@@ -122,7 +123,7 @@ async fn test_audio_processing_integration() {
     
     match convert_result {
         Ok(compatible_wav) => {
-            println!("转换输出: {}", compatible_wav.path.display());
+            info!("转换输出: {}", compatible_wav.path.display());
             assert!(compatible_wav.path.exists(), "转换后的文件应该存在");
             
             // 清理临时文件
@@ -130,29 +131,29 @@ async fn test_audio_processing_integration() {
         let _ = std::fs::remove_file(&temp_output);
     }
             
-            println!("✓ 音频格式转换成功");
+            info!("✓ 音频格式转换成功");
         }
         Err(e) => {
             panic!("音频格式转换失败: {}", e);
         }
     }
     
-    println!("✓ 音频处理集成测试通过");
+    info!("✓ 音频处理集成测试通过");
 }
 
 #[tokio::test]
 async fn test_tts_text_to_audio_integration() {
     // 检查 index-tts 是否可用
     if !check_index_tts_available() {
-        println!("跳过 TTS 集成测试: index-tts 不可用");
-        println!("要启用 TTS 测试，请安装 index-tts 并确保在 PATH 中");
+        info!("跳过 TTS 集成测试: index-tts 不可用");
+        info!("要启用 TTS 测试，请安装 index-tts 并确保在 PATH 中");
         return;
     }
     
-    println!("开始 TTS 集成测试...");
+    info!("开始 TTS 集成测试...");
     
     let test_text = "Hello, this is a test.";
-    println!("测试文本: {}", test_text);
+    info!("测试文本: {}", test_text);
     
     // 创建 TTS 服务
     let config = rs_voice_toolkit_tts::TtsConfig::default();
@@ -162,7 +163,7 @@ async fn test_tts_text_to_audio_integration() {
     let memory_result = tts_service.text_to_speech(test_text).await;
     match memory_result {
         Ok(audio_data) => {
-            println!("内存合成成功，音频数据大小: {} 字节", audio_data.len());
+            info!("内存合成成功，音频数据大小: {} 字节", audio_data.len());
             assert!(!audio_data.is_empty(), "音频数据不应为空");
             
             // 验证是否为有效的 WAV 文件（简单检查 WAV 头）
@@ -171,13 +172,13 @@ async fn test_tts_text_to_audio_integration() {
                 let wave_header = &audio_data[8..12];
                 
                 if riff_header == b"RIFF" && wave_header == b"WAVE" {
-                    println!("✓ 生成的音频数据具有有效的 WAV 格式");
+                    info!("✓ 生成的音频数据具有有效的 WAV 格式");
                 } else {
-                    println!("⚠ 音频数据格式可能不是标准 WAV，但测试仍然通过");
+                    info!("⚠ 音频数据格式可能不是标准 WAV，但测试仍然通过");
                 }
             }
             
-            println!("✓ TTS 内存合成测试通过");
+            info!("✓ TTS 内存合成测试通过");
         }
         Err(e) => {
             panic!("TTS 内存合成失败: {}", e);
@@ -190,25 +191,25 @@ async fn test_tts_text_to_audio_integration() {
     
     match file_result {
         Ok(_) => {
-            println!("文件合成成功: {}", temp_output.display());
+            info!("文件合成成功: {}", temp_output.display());
             assert!(temp_output.exists(), "输出文件应该存在");
             
             // 检查文件大小
             let metadata = std::fs::metadata(&temp_output).expect("无法读取文件元数据");
             assert!(metadata.len() > 0, "输出文件不应为空");
-            println!("输出文件大小: {} 字节", metadata.len());
+            info!("输出文件大小: {} 字节", metadata.len());
             
             // 清理临时文件
             let _ = std::fs::remove_file(&temp_output);
             
-            println!("✓ TTS 文件合成测试通过");
+            info!("✓ TTS 文件合成测试通过");
         }
         Err(e) => {
             panic!("TTS 文件合成失败: {}", e);
         }
     }
     
-    println!("✓ TTS 集成测试通过");
+    info!("✓ TTS 集成测试通过");
 }
 
 #[tokio::test]
@@ -217,33 +218,33 @@ async fn test_end_to_end_stt_workflow() {
     let (model_path, audio_path) = match check_test_fixtures() {
         Ok(paths) => paths,
         Err(e) => {
-            eprintln!("跳过端到端 STT 工作流测试: {}", e);
+            log::warn!("跳过端到端 STT 工作流测试: {}", e);
             return;
         }
     };
     
-    println!("开始端到端 STT 工作流测试...");
+    info!("开始端到端 STT 工作流测试...");
     
     // 步骤 1: 音频预处理
-    println!("步骤 1: 音频预处理");
+    info!("步骤 1: 音频预处理");
     let temp_processed = std::env::temp_dir().join("test_processed_audio.wav");
     let temp_processed_clone = temp_processed.clone();
     let compatible_wav = rs_voice_toolkit_audio::ensure_whisper_compatible(&audio_path, Some(temp_processed))
         .expect("音频预处理失败");
     let processed_path = compatible_wav.path.clone();
     
-    println!("音频预处理完成: {}", processed_path.display());
+    info!("音频预处理完成: {}", processed_path.display());
     
     // 步骤 2: STT 转录
-    println!("步骤 2: STT 转录");
+    info!("步骤 2: STT 转录");
     let transcription = rs_voice_toolkit_stt::transcribe_file(&model_path, &processed_path)
         .await
         .expect("STT 转录失败");
     
-    println!("转录结果: {}", transcription.text);
-    println!("片段数量: {}", transcription.segments.len());
-    println!("音频时长: {} ms", transcription.audio_duration);
-    println!("处理时间: {} ms", transcription.processing_time);
+    info!("转录结果: {}", transcription.text);
+    info!("片段数量: {}", transcription.segments.len());
+    info!("音频时长: {} ms", transcription.audio_duration);
+    info!("处理时间: {} ms", transcription.processing_time);
     
     // 验证结果
     assert!(!transcription.text.trim().is_empty(), "转录文本不应为空");
@@ -254,7 +255,7 @@ async fn test_end_to_end_stt_workflow() {
         let _ = std::fs::remove_file(&temp_processed_clone);
     }
     
-    println!("✓ 端到端 STT 工作流测试通过");
+    info!("✓ 端到端 STT 工作流测试通过");
 }
 
 #[cfg(feature = "streaming")]
@@ -264,12 +265,12 @@ async fn test_streaming_stt_integration() {
     let (model_path, audio_path) = match check_test_fixtures() {
         Ok(paths) => paths,
         Err(e) => {
-            eprintln!("跳过流式 STT 集成测试: {}", e);
+            log::warn!("跳过流式 STT 集成测试: {}", e);
             return;
         }
     };
     
-    println!("开始流式 STT 集成测试...");
+    info!("开始流式 STT 集成测试...");
     
     // 读取音频文件
     let audio_data = std::fs::read(&audio_path).expect("无法读取音频文件");
@@ -280,12 +281,12 @@ async fn test_streaming_stt_integration() {
         .await
         .expect("创建流式转录器失败");
     
-    println!("流式转录器创建成功");
+    info!("流式转录器创建成功");
     
     // 启动流式转录
     let mut receiver = transcriber.start_streaming().expect("启动流式转录失败");
     
-    println!("流式转录已启动");
+    info!("流式转录已启动");
     
     // 模拟分块推送音频数据
     let chunk_size = 8192; // 8KB 块
@@ -294,7 +295,7 @@ async fn test_streaming_stt_integration() {
     tokio::spawn(async move {
         for chunk in audio_data.chunks(chunk_size) {
             if let Err(e) = transcriber.push_audio(chunk.to_vec()).await {
-                eprintln!("推送音频数据失败: {}", e);
+                log::error!("推送音频数据失败: {}", e);
                 break;
             }
             total_chunks += 1;
@@ -303,11 +304,11 @@ async fn test_streaming_stt_integration() {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
         
-        println!("音频数据推送完成，共 {} 块", total_chunks);
+        info!("音频数据推送完成，共 {} 块", total_chunks);
         
         // 停止流式转录
         if let Err(e) = transcriber.stop_streaming().await {
-            eprintln!("停止流式转录失败: {}", e);
+            log::error!("停止流式转录失败: {}", e);
         }
     });
     
@@ -320,22 +321,22 @@ async fn test_streaming_stt_integration() {
         
         match event {
             StreamingEvent::SpeechStart => {
-                println!("检测到语音开始");
+                info!("检测到语音开始");
             }
             StreamingEvent::SpeechEnd => {
-                println!("检测到语音结束");
+                info!("检测到语音结束");
             }
             StreamingEvent::Silence => {
-                println!("检测到静音");
+                info!("检测到静音");
             }
             StreamingEvent::TranscriptionResult(result) => {
-                println!("转录结果: {}", result.text);
+                info!("转录结果: {}", result.text);
                 if !result.text.trim().is_empty() {
                     final_text = result.text;
                 }
             }
             StreamingEvent::Error(e) => {
-                eprintln!("流式转录错误: {}", e);
+                log::error!("流式转录错误: {}", e);
             }
         }
         
@@ -345,11 +346,11 @@ async fn test_streaming_stt_integration() {
         }
     }
     
-    println!("接收到 {} 个事件", event_count);
-    println!("最终转录文本: {}", final_text);
+    info!("接收到 {} 个事件", event_count);
+    info!("最终转录文本: {}", final_text);
     
     // 验证结果
     assert!(event_count > 0, "应该接收到至少一个事件");
     
-    println!("✓ 流式 STT 集成测试通过");
+    info!("✓ 流式 STT 集成测试通过");
 }

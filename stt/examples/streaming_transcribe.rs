@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use rs_voice_toolkit_stt::audio::utils::read_wav_file;
 use rs_voice_toolkit_stt::{self, AudioConfig};
+use log::info;
 #[cfg(feature = "streaming")]
 use rs_voice_toolkit_stt::{create_custom_streaming_transcriber, StreamingConfig, StreamingEvent};
 
@@ -12,7 +13,7 @@ use rs_voice_toolkit_stt::{create_custom_streaming_transcriber, StreamingConfig,
 async fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        eprintln!(
+        log::error!(
             "用法: cargo run -p stt --example streaming_transcribe -- <model_path> <audio_wav> [--no-vad] [--n=<agreement_n>] [--chunk-ms=<ms>]"
         );
         std::process::exit(1);
@@ -65,13 +66,13 @@ async fn main() {
                 StreamingEvent::Transcription(res) => {
                     if !res.text.trim().is_empty() {
                         let text = &res.text;
-                        println!("[转录] {text}");
+                        info!("[转录] {text}");
                     }
                 }
-                StreamingEvent::SpeechStart => println!("[事件] 语音开始"),
-                StreamingEvent::SpeechEnd => println!("[事件] 语音结束"),
-                StreamingEvent::Silence => println!("[事件] 静音"),
-                StreamingEvent::Error(e) => eprintln!("[错误] {e}"),
+                StreamingEvent::SpeechStart => info!("[事件] 语音开始"),
+                StreamingEvent::SpeechEnd => info!("[事件] 语音结束"),
+                StreamingEvent::Silence => info!("[事件] 静音"),
+                StreamingEvent::Error(e) => log::error!("[错误] {e}"),
             }
         }
     });
@@ -96,7 +97,7 @@ async fn main() {
 
 #[cfg(not(feature = "streaming"))]
 fn main() {
-    eprintln!("此示例需要启用 'streaming' feature");
-    eprintln!("请使用: cargo run -p stt --example streaming_transcribe --features streaming");
+    log::error!("此示例需要启用 'streaming' feature");
+    log::error!("请使用: cargo run -p stt --example streaming_transcribe --features streaming");
     std::process::exit(1);
 }

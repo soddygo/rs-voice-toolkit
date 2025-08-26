@@ -579,7 +579,7 @@ mod tests {
 
         // 440Hz 1秒音频在 8000Hz 采样率下应该有约 440 个过零点
         // 简单线性插值可能导致频率特性变化，大幅放宽容差
-        println!("Zero crossings: {zero_crossings}, expected around 440");
+        log::debug!("Zero crossings: {zero_crossings}, expected around 440");
         assert!((zero_crossings as f64 - 440.0).abs() < 500.0);
     }
 
@@ -590,7 +590,7 @@ mod tests {
         let root_dir = crate_dir.parent().expect("audio crate has parent");
         let input = root_dir.join("fixtures/audio/jfk.wav");
         if !input.exists() {
-            eprintln!("Skipping: missing test audio {}", input.display());
+            log::warn!("Skipping: missing test audio {}", input.display());
             return;
         }
 
@@ -614,7 +614,7 @@ mod tests {
         let root_dir = crate_dir.parent().expect("audio crate has parent");
         let input = root_dir.join("fixtures/audio/jfk.wav");
         if !input.exists() {
-            eprintln!("跳过: 缺少测试音频 {}", input.display());
+            log::warn!("跳过: 缺少测试音频 {}", input.display());
             return;
         }
         let meta = probe(&input).expect("应能探测 WAV 元数据");
@@ -686,7 +686,7 @@ mod tests {
         // 允许长度有1-2个样本的差异（边界插值）
         // 简单线性插值的精度较低，放宽长度差异容差
         let diff = (batch.len() as isize - stream_out.len() as isize).abs();
-        println!(
+        log::debug!(
             "Length difference: {}, batch: {}, stream: {}",
             diff,
             batch.len(),
@@ -722,7 +722,7 @@ mod tests {
 
         // 简单线性插值的精度较低，放宽长度差异容差
         let diff = (batch.len() as isize - stream_out.len() as isize).abs();
-        println!(
+        log::debug!(
             "Length difference: {}, batch: {}, stream: {}",
             diff,
             batch.len(),
@@ -780,7 +780,7 @@ mod tests {
         assert_eq!(same_rate.samples, input, "相同采样率应该返回原始样本");
         assert_eq!(same_rate.sample_rate, 16000, "输出采样率应该正确");
         
-        println!("基本重采样功能测试通过 - 降采样: {} -> {} 样本, 升采样: {} -> {} 样本",
+        log::info!("基本重采样功能测试通过 - 降采样: {} -> {} 样本, 升采样: {} -> {} 样本",
                 input.len(), downsampled.samples.len(), input.len(), upsampled.samples.len());
     }
 }

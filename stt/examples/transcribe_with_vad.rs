@@ -8,6 +8,7 @@ use rs_voice_toolkit_stt::{
     audio::utils::read_wav_file,
     whisper::{WhisperConfig, WhisperTranscriber},
 };
+use log::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        eprintln!(
+        log::error!(
             "用法: {} <模型路径> <音频文件> [--enable-vad] [--vad-threshold=0.01]",
             args[0]
         );
@@ -40,12 +41,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let model_display = model_path.display();
-    println!("模型路径: {model_display}");
+    info!("模型路径: {model_display}");
     let audio_display = audio_path.display();
-    println!("音频文件: {audio_display}");
-    println!("VAD 启用: {enable_vad}");
-    println!("VAD 阈值: {vad_threshold}");
-    println!();
+    info!("音频文件: {audio_display}");
+    info!("VAD 启用: {enable_vad}");
+    info!("VAD 阈值: {vad_threshold}");
+    info!("");
 
     // 创建配置
     let config = WhisperConfig::new(model_path)
@@ -61,14 +62,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 读取音频数据
     let audio_data = read_wav_file(&audio_path)?;
-    println!("音频信息:");
-    println!("  时长: {:.2}秒", audio_data.duration());
-    println!("  采样率: {}Hz", audio_data.config.sample_rate);
-    println!("  声道数: {}", audio_data.config.channels);
-    println!();
+    info!("音频信息:");
+    info!("  时长: {:.2}秒", audio_data.duration());
+    info!("  采样率: {}Hz", audio_data.config.sample_rate);
+    info!("  声道数: {}", audio_data.config.channels);
+    info!("");
 
     // 执行转录
-    println!("开始转录...");
+    info!("开始转录...");
     let start_time = std::time::Instant::now();
 
     let result = transcriber.transcribe_audio_data(&audio_data).await?;
@@ -76,22 +77,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let elapsed = start_time.elapsed();
 
     // 输出结果
-    println!("转录完成!");
-    println!("处理时间: {:.2}秒", elapsed.as_secs_f64());
-    println!("实时因子: {:.2}x", result.real_time_factor());
-    println!();
+    info!("转录完成!");
+    info!("处理时间: {:.2}秒", elapsed.as_secs_f64());
+    info!("实时因子: {:.2}x", result.real_time_factor());
+    info!("");
 
     if result.text.trim().is_empty() {
-        println!("转录结果: [空] (可能被 VAD 过滤)");
+        info!("转录结果: [空] (可能被 VAD 过滤)");
     } else {
-        println!("转录结果: {}", result.text.trim());
+        info!("转录结果: {}", result.text.trim());
     }
 
     if !result.segments.is_empty() {
-        println!();
-        println!("分段信息:");
+        info!("");
+        info!("分段信息:");
         for (i, segment) in result.segments.iter().enumerate() {
-            println!(
+            info!(
                 "  [{}] {:.2}s-{:.2}s: {} (置信度: {:.2})",
                 i + 1,
                 segment.start_time as f64 / 1000.0,
