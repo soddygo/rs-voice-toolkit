@@ -49,7 +49,7 @@ impl Default for WhisperConfig {
     fn default() -> Self {
         Self {
             model_path: PathBuf::from("models/ggml-base.bin"),
-            language: None, // 自动检测
+            language: Some("auto".to_string()), // 自动检测
             translate: false,
             n_threads: 4,
             print_timestamps: true,
@@ -549,6 +549,23 @@ where
     P2: AsRef<Path>,
 {
     let config = WhisperConfig::new(model_path).with_language(language);
+    let transcriber = WhisperTranscriber::new(config)?;
+    transcriber.transcribe_file(audio_path).await
+}
+
+/// 便捷函数：快速转录文件（带自定义配置）
+/// 如果未提供配置，则使用默认配置
+pub async fn transcribe_file_with_config<P1, P2>(
+    model_path: P1,
+    audio_path: P2,
+    config: Option<WhisperConfig>,
+) -> SttResult<TranscriptionResult>
+where
+    P1: Into<PathBuf>,
+    P2: AsRef<Path>,
+{
+    // 如果提供了配置，则使用它；否则使用基于给定模型路径的默认配置
+    let config = config.unwrap_or_else(|| WhisperConfig::new(model_path));
     let transcriber = WhisperTranscriber::new(config)?;
     transcriber.transcribe_file(audio_path).await
 }
