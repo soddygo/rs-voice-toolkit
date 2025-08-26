@@ -570,6 +570,16 @@ where
     transcriber.transcribe_file(audio_path).await
 }
 
+/// 便捷函数：使用已有的 WhisperTranscriber 实例转录文件
+/// 这可以避免每次都重新加载模型，提高处理多个文件时的性能
+pub async fn transcribe_file_with_transcriber<P: AsRef<Path>>(
+    transcriber: &WhisperTranscriber,
+    audio_path: P,
+) -> SttResult<TranscriptionResult>
+{
+    transcriber.transcribe_file(audio_path).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
