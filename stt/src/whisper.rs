@@ -55,7 +55,7 @@ impl Default for WhisperConfig {
             print_timestamps: true,
             print_progress: false,
             print_special: false,
-            temperature: 0.0,
+            temperature: 0.2,
             max_segment_length: None,
             initial_prompt: None,
             enable_vad: true,   // 默认禁用 VAD，保持向后兼容
