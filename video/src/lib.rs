@@ -68,6 +68,7 @@ pub struct VideoInfo {
 
 /// 视频处理服务
 pub struct VideoProcessor {
+    /// FFmpeg可执行文件的路径（可选）
     ffmpeg_path: Option<PathBuf>,
 }
 

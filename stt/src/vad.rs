@@ -5,9 +5,12 @@
 /// 简单的VAD实现
 #[derive(Debug, Clone)]
 pub struct SimpleVad {
+    /// 语音检测阈值
     threshold: f32,
+    /// 检测窗口大小（样本数）
     window_size: usize,
     #[allow(dead_code)]
+    /// 音频采样率 (Hz)
     sample_rate: u32,
 }
 

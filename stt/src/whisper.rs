@@ -218,7 +218,9 @@ impl TranscriptionResult {
 
 /// Whisper 转录器
 pub struct WhisperTranscriber {
+    /// Whisper模型上下文
     context: Arc<WhisperContext>,
+    /// Whisper配置
     config: WhisperConfig,
 }
 

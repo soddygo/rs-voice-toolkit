@@ -158,20 +158,27 @@ impl AudioConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioMeta {
+    /// 采样率 (Hz)
     pub sample_rate: u32,
+    /// 声道数
     pub channels: u16,
+    /// 音频时长 (毫秒)
     pub duration_ms: Option<u64>,
+    /// 音频格式
     pub format: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CompatibleWav {
+    /// 兼容格式的WAV文件路径
     pub path: std::path::PathBuf,
 }
 
 #[derive(Debug, Clone)]
 pub struct Resampled {
+    /// 重采样后的音频样本数据
     pub samples: Vec<f32>,
+    /// 重采样后的采样率 (Hz)
     pub sample_rate: u32,
 }
 
@@ -370,10 +377,15 @@ pub fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Result<Resampl
 /// 流式重采样器
 /// 支持分块输入的连续重采样，使用 rubato 库实现
 pub struct StreamingResampler {
+    /// 重采样器实例（可选，当输入输出采样率相同时为None）
     resampler: Option<SincFixedIn<f32>>,
+    /// 输入采样率 (Hz)
     from_rate: u32,
+    /// 输出采样率 (Hz)
     to_rate: u32,
+    /// 音频样本缓冲区
     buffer: Vec<f32>,
+    /// 处理块大小
     chunk_size: usize,
 }
 

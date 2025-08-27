@@ -76,8 +76,11 @@ pub enum StreamingEvent {
 /// 音频缓冲区
 #[derive(Debug)]
 struct AudioBuffer {
+    /// 音频样本数据队列
     samples: VecDeque<f32>,
+    /// 音频配置信息
     config: AudioConfig,
+    /// 最大样本数量
     max_samples: usize,
 }
 
@@ -132,8 +135,11 @@ impl AudioBuffer {
 /// 转录结果聚合器：基于 LocalAgreement-n 的前缀一致性确认
 #[derive(Debug, Default)]
 struct StreamingAggregator {
+    /// 最近的转录文本队列
     last_texts: VecDeque<String>,
+    /// 已确认的文本前缀
     confirmed_prefix: String,
+    /// LocalAgreement 窗口大小
     n: usize,
 }
 
@@ -192,15 +198,25 @@ impl StreamingAggregator {
 
 /// 实时语音转录器
 pub struct StreamingTranscriber {
+    /// Whisper转录器实例
     transcriber: Arc<WhisperTranscriber>,
+    /// 流式转录配置
     config: StreamingConfig,
+    /// 音频配置
     audio_config: AudioConfig,
+    /// 音频缓冲区（线程安全）
     buffer: Arc<Mutex<AudioBuffer>>,
+    /// 语音活动检测器（可选）
     vad: Option<SimpleVad>,
+    /// 事件发送器（用于输出转录结果和状态）
     event_sender: Option<mpsc::UnboundedSender<StreamingEvent>>,
+    /// 运行状态标志（线程安全）
     is_running: Arc<Mutex<bool>>,
+    /// 音频数据发送器
     audio_sender: Option<mpsc::UnboundedSender<Vec<f32>>>,
+    /// 音频处理任务句柄
     audio_task_handle: Option<tokio::task::JoinHandle<()>>,
+    /// 转录处理任务句柄
     transcription_task_handle: Option<tokio::task::JoinHandle<()>>,
 }
 

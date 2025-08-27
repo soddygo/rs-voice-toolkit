@@ -92,6 +92,7 @@ pub trait TtsEngine {
 /// Index-TTS 引擎
 #[derive(Debug, Clone)]
 pub struct IndexTtsEngine {
+    /// TTS配置
     cfg: TtsConfig,
 }
 
