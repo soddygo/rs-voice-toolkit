@@ -58,7 +58,7 @@ impl Default for WhisperConfig {
             temperature: 0.0,
             max_segment_length: None,
             initial_prompt: None,
-            enable_vad: false,   // 默认禁用 VAD，保持向后兼容
+            enable_vad: true,   // 默认禁用 VAD，保持向后兼容
             vad_threshold: 0.01, // 默认 VAD 阈值
         }
     }
@@ -318,35 +318,60 @@ impl WhisperTranscriber {
         let audio_samples = self.prepare_audio_samples(audio_data)?;
 
         // VAD 检测（如果启用）
+        let mut processed_samples = audio_samples.clone();
+        let audio_duration = audio_data.duration();
+        let mut audio_duration_adj = audio_duration;
+        let mut start_offset_ms = 0;
+        
         if self.config.enable_vad {
             let vad = SimpleVad::new(self.config.vad_threshold);
-            let has_speech = vad.detect_speech(&audio_samples);
-
-            if !has_speech {
+            
+            // 检测语音段
+            let speech_segments = vad.detect_speech_segments(&audio_samples);
+            
+            if speech_segments.is_empty() {
                 info!("VAD检测到无语音活动，跳过转录");
                 return Ok(TranscriptionResult {
                     text: String::new(),
                     language: self.config.language.clone(),
                     segments: Vec::new(),
                     processing_time: start_time.elapsed().as_millis() as u64,
-                    audio_duration: (audio_data.duration() * 1000.0) as u64,
+                    audio_duration: (audio_duration * 1000.0) as u64,
                 });
+            } else {
+                // 裁剪开头的静音部分，使用第一个语音段
+                let first_segment = speech_segments.first().unwrap();
+                
+                if first_segment.0 > 0 {
+                    // 裁剪音频样本
+                    processed_samples = audio_samples[first_segment.0..].to_vec();
+                    
+                    // 计算裁剪后的音频时长
+                    let sample_rate = audio_data.config.sample_rate as f64;
+                    start_offset_ms = (first_segment.0 as f64 / sample_rate * 1000.0) as u64;
+                    audio_duration_adj = audio_duration - (first_segment.0 as f64 / sample_rate);
+                    
+                    info!(
+                        "VAD裁剪掉开头静音部分，偏移量: {}毫秒，原长度: {:.2}秒，裁剪后长度: {:.2}秒",
+                        start_offset_ms, audio_duration, audio_duration_adj
+                    );
+                }
+                
+                debug!("VAD检测到{}个语音段，继续转录", speech_segments.len());
             }
-
-            debug!("VAD检测到语音活动，继续转录");
         }
-
-        info!("开始Whisper推理，音频长度: {:.2}秒", audio_data.duration());
-
+        
+        info!("开始Whisper推理,音频长度: {:.2}秒", audio_duration_adj);
+        
         // 创建Whisper状态
         let mut state = self
             .context
             .create_state()
             .map_err(|e| SttError::WhisperError(format!("创建Whisper状态失败: {e}")))?;
-
+        
         // 设置参数
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-
+        
         // 配置参数
         params.set_n_threads(self.config.n_threads);
         params.set_translate(self.config.translate);
@@ -354,26 +379,33 @@ impl WhisperTranscriber {
         params.set_print_progress(self.config.print_progress);
         params.set_print_special(self.config.print_special);
         params.set_temperature(self.config.temperature);
-
+        
         // 设置语言
         if let Some(ref language) = self.config.language {
             params.set_language(Some(language.as_str()));
         }
-
+        
         // 注意：whisper-rs可能不支持set_initial_prompt方法
         // 如果需要初始提示功能，请查阅whisper-rs文档获取正确的API
         // if let Some(prompt) = &self.config.initial_prompt {
         //     // params.set_initial_prompt(Some(prompt.as_str()));
         // }
-
+        
         // 执行转录
         state
-            .full(params, &audio_samples)
+            .full(params, &processed_samples)
             .map_err(|e| SttError::TranscriptionError(format!("Whisper转录失败: {e}")))?;
-
+        
         // 提取结果
-        let result =
-            self.extract_transcription_result(&state, audio_data.duration(), start_time)?;
+        let mut result = self.extract_transcription_result(&state, audio_duration_adj, start_time)?;
+        
+        // 调整时间戳以反映裁剪后的音频
+        if start_offset_ms > 0 {
+            for segment in &mut result.segments {
+                segment.start_time += start_offset_ms;
+                segment.end_time += start_offset_ms;
+            }
+        }
 
         info!("转录完成，实时因子: {:.2}x", result.real_time_factor());
 
