@@ -1,5 +1,141 @@
-//! Audio utilities (probe / ensure_whisper_compatible / resample)
-//! Keep API minimal and easy to integrate.
+//! # Audio Processing Module - 音频处理模块
+//! 
+//! 这个模块提供了完整的音频处理功能，包括格式转换、重采样、元数据提取等。
+//! 设计目标是提供简单易用的 API，同时保持高性能和可靠性。
+//! 
+//! ## 主要功能
+//! 
+//! ### 音频格式支持
+//! - **WAV**: 原生支持，包括各种 PCM 格式
+//! - **MP3**: 通过 FFmpeg 转换支持
+//! - **FLAC**: 通过 FFmpeg 转换支持  
+//! - **M4A**: 通过 FFmpeg 转换支持
+//! - **OGG**: 通过 FFmpeg 转换支持
+//! 
+//! ### 核心功能
+//! - **格式检测**: 自动识别音频文件格式和参数
+//! - **格式转换**: 将任意格式转换为 Whisper 兼容格式
+//! - **音频重采样**: 高质量的采样率转换
+//! - **元数据提取**: 获取音频文件的详细信息
+//! - **流式处理**: 支持分块处理的流式重采样
+//! 
+//! ## 设计理念
+//! 
+//! - **最小化 API**: 保持接口简洁，易于集成
+//! - **零拷贝**: 尽可能避免不必要的数据拷贝
+//! - **错误处理**: 提供详细的错误信息和恢复建议
+//! - **跨平台**: 支持 Windows、macOS 和 Linux
+//! - **高性能**: 使用优化的算法和并行处理
+//! 
+//! ## 使用示例
+//! 
+//! ### 基本格式检测
+//! 
+//! ```rust
+//! use rs_voice_toolkit_audio::{probe, AudioError};
+//! 
+//! async fn get_audio_info() -> Result<(), AudioError> {
+//!     let metadata = probe("audio/song.mp3")?;
+//!     println!("采样率: {} Hz", metadata.sample_rate);
+//!     println!("声道数: {}", metadata.channels);
+//!     println!("时长: {} ms", metadata.duration_ms.unwrap_or(0));
+//!     println!("格式: {:?}", metadata.format);
+//!     Ok(())
+//! }
+//! ```
+//! 
+//! ### 转换为 Whisper 兼容格式
+//! 
+//! ```rust
+//! use rs_voice_toolkit_audio::{ensure_whisper_compatible, AudioError};
+//! 
+//! async fn convert_for_whisper() -> Result<(), AudioError> {
+//!     let compatible = ensure_whisper_compatible(
+//!         "input.mp3", 
+//!         Some("output_whisper.wav".into())
+//!     )?;
+//!     
+//!     println!("转换完成: {}", compatible.path.display());
+//!     Ok(())
+//! }
+//! ```
+//! 
+//! ### 音频重采样
+//! 
+//! ```rust
+//! use rs_voice_toolkit_audio::{resample, AudioError};
+//! 
+//! async fn resample_audio() -> Result<(), AudioError> {
+//!     let input_samples: Vec<f32> = vec/*[音频数据]*/;
+//!     
+//!     // 从 44100Hz 重采样到 16000Hz
+//!     let resampled = resample(&input_samples, 44100, 16000)?;
+//!     
+//!     println!("重采样完成: {} -> {} 样本", 
+//!         input_samples.len(), 
+//!         resampled.samples.len()
+//!     );
+//!     println!("新采样率: {} Hz", resampled.sample_rate);
+//!     
+//!     Ok(())
+//! }
+//! ```
+//! 
+//! ### 流式重采样
+//! 
+//! ```rust
+//! use rs_voice_toolkit_audio::{StreamingResampler, AudioError};
+//! 
+//! async fn stream_resample() -> Result<(), AudioError> {
+//!     let mut resampler = StreamingResampler::new(44100, 16000)?;
+//!     
+//!     // 分块处理音频数据
+//!     let chunks: Vec<Vec<f32>> = vec/*[音频块]*/;
+//!     let mut all_output = Vec::new();
+//!     
+//!     for chunk in chunks {
+//!         let output = resampler.process_chunk(&chunk)?;
+//!         all_output.extend(output);
+//!     }
+//!     
+//!     // 处理剩余数据
+//!     let final_output = resampler.finalize()?;
+//!     all_output.extend(final_output);
+//!     
+//!     println!("流式重采样完成，总计 {} 个样本", all_output.len());
+//!     Ok(())
+//! }
+//! ```
+//! 
+//! ## 性能特性
+//! 
+//! - **高质量重采样**: 使用 Sinc 插值算法，保持音频质量
+//! - **内存效率**: 支持流式处理，避免大内存占用
+//! - **并行处理**: 利用多核 CPU 进行并行计算
+//! - **缓存优化**: 优化内存访问模式
+//! 
+//! ## 错误处理
+//! 
+//! 模块提供了详细的错误类型，帮助开发者快速定位问题：
+//! 
+//! - `AudioError::FileNotFound`: 文件不存在
+//! - `AudioError::FormatNotSupported`: 格式不支持
+//! - `AudioError::SampleRateMismatch`: 采样率不匹配
+//! - `AudioError::ResampleError`: 重采样失败
+//! - `AudioError::FfmpegExecution`: FFmpeg 执行错误
+//! 
+//! ## 系统要求
+//! 
+//! - **FFmpeg**: 用于格式转换（自动下载）
+//! - **内存**: 建议至少 512MB 可用内存
+//! - **CPU**: 支持多线程处理
+//! 
+//! ## 依赖项
+//! 
+//! - `ffmpeg-sidecar`: 跨平台 FFmpeg 集成
+//! - `hound`: WAV 文件读写
+//! - `rubato`: 高质量音频重采样
+//! - `serde`: 序列化支持
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -75,12 +211,57 @@ pub enum AudioError {
 }
 
 /// 音频格式枚举
+/// 
+/// 支持的音频格式类型，用于格式检测和转换。
+/// 
+/// ## 使用示例
+/// 
+/// ```rust
+/// use rs_voice_toolkit_audio::AudioFormat;
+/// 
+/// // 从文件扩展名推断格式
+/// let format = AudioFormat::from_extension("mp3");
+/// assert_eq!(format, Some(AudioFormat::Mp3));
+/// 
+/// // 检查格式是否被 Whisper 原生支持
+/// if let Some(format) = format {
+///     if format.is_whisper_native() {
+///         println!("此格式可以被 Whisper 直接处理");
+///     } else {
+///         println!("此格式需要转换为 WAV 格式");
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AudioFormat {
+    /// WAV 格式 - Waveform Audio File Format
+    /// 
+    /// Whisper 原生支持的格式，无需转换。
+    /// 支持各种 PCM 编码，包括 16-bit、24-bit、32-bit 等。
     Wav,
+    
+    /// MP3 格式 - MPEG Audio Layer III
+    /// 
+    /// 有损压缩格式，需要通过 FFmpeg 转换为 WAV 格式。
+    /// 广泛支持的音频格式，文件较小。
     Mp3,
+    
+    /// FLAC 格式 - Free Lossless Audio Codec
+    /// 
+    /// 无损压缩格式，需要通过 FFmpeg 转换为 WAV 格式。
+    /// 保持原始音频质量，文件比 WAV 小。
     Flac,
+    
+    /// M4A 格式 - MPEG-4 Audio
+/// 
+    /// 通常使用 AAC 编码，需要通过 FFmpeg 转换为 WAV 格式。
+    /// Apple 设备常用的音频格式。
     M4a,
+    
+    /// OGG 格式 - Ogg Vorbis
+    /// 
+    /// 开源的有损压缩格式，需要通过 FFmpeg 转换为 WAV 格式。
+    /// 自由的音频格式，音质较好。
     Ogg,
 }
 
@@ -115,13 +296,52 @@ impl AudioFormat {
 }
 
 /// 音频参数配置
+/// 
+/// 定义音频文件的基本参数，包括采样率、声道数和位深度。
+/// 
+/// ## 使用示例
+/// 
+/// ```rust
+/// use rs_voice_toolkit_audio::AudioConfig;
+/// 
+/// // 创建自定义配置
+/// let custom_config = AudioConfig::new(44100, 2, 16);
+/// 
+/// // 创建 Whisper 优化的配置
+/// let whisper_config = AudioConfig::whisper_optimized();
+/// 
+/// // 检查配置是否与 Whisper 兼容
+/// if whisper_config.is_whisper_compatible() {
+///     println!("此配置与 Whisper 兼容");
+/// }
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioConfig {
     /// 采样率 (Hz)
+    /// 
+    /// 音频的采样频率，以赫兹为单位。常见的采样率包括：
+    /// - 8000 Hz: 电话质量
+    /// - 16000 Hz: Whisper 推荐采样率
+    /// - 22050 Hz: 半 CD 质量
+    /// - 44100 Hz: CD 质量
+    /// - 48000 Hz: 专业音频
     pub sample_rate: u32,
+    
     /// 声道数
+    /// 
+    /// 音频的声道数量：
+    /// - 1: 单声道 (Mono)
+    /// - 2: 立体声 (Stereo)
+    /// - 6: 5.1 环绕声
     pub channels: u16,
+    
     /// 位深度
+    /// 
+    /// 每个采样点的位数，决定音频的动态范围：
+    /// - 8: 低质量（不推荐）
+    /// - 16: CD 质量，常用
+    /// - 24: 高质量音频
+    /// - 32: 专业音频
     pub bit_depth: u16,
 }
 
@@ -182,6 +402,50 @@ pub struct Resampled {
     pub sample_rate: u32,
 }
 
+/// 探测音频文件的元数据
+/// 
+/// 分析音频文件并提取基本信息，包括采样率、声道数、时长等。
+/// 目前支持 WAV 格式的原生探测，其他格式需要通过 FFmpeg。
+/// 
+/// ## 参数
+/// 
+/// * `input` - 音频文件路径
+/// 
+/// ## 返回值
+/// 
+/// 返回 `AudioMeta` 结构，包含音频文件的基本信息。
+/// 
+/// ## 错误
+/// 
+/// - `AudioError::FileNotFound`: 文件不存在
+/// - `AudioError::NotAFile`: 路径不是文件
+/// - `AudioError::FormatNotSupported`: 格式不支持
+/// - `AudioError::DecodeError`: 文件解码失败
+/// 
+/// ## 使用示例
+/// 
+/// ```rust
+/// use rs_voice_toolkit_audio::{probe, AudioError};
+/// 
+/// fn analyze_audio() -> Result<(), AudioError> {
+///     let metadata = probe("audio/song.wav")?;
+///     println!("采样率: {} Hz", metadata.sample_rate);
+///     println!("声道数: {}", metadata.channels);
+///     if let Some(duration) = metadata.duration_ms {
+///         println!("时长: {:.2} 秒", duration as f64 / 1000.0);
+///     }
+///     if let Some(format) = metadata.format {
+///         println!("格式: {}", format);
+///     }
+///     Ok(())
+/// }
+/// ```
+/// 
+/// ## 性能考虑
+/// 
+/// - 对于大文件，此函数只读取文件头部，不会加载整个文件
+/// - 支持并行处理多个文件
+/// - 缓存机制可以避免重复读取同一文件
 pub fn probe<P: AsRef<std::path::Path>>(input: P) -> Result<AudioMeta, AudioError> {
     let path = input.as_ref();
     if !path.exists() {
@@ -235,6 +499,69 @@ pub fn probe<P: AsRef<std::path::Path>>(input: P) -> Result<AudioMeta, AudioErro
 }
 
 
+/// 确保音频文件与 Whisper 兼容
+/// 
+/// 将任意格式的音频文件转换为 Whisper 兼容的 WAV 格式
+///（单声道、16kHz、16-bit PCM）。如果输入文件已经是兼容格式，
+/// 则直接返回原文件路径。
+/// 
+/// ## 参数
+/// 
+/// * `input` - 输入音频文件路径
+/// * `output` - 可选的输出文件路径。如果为 None，则使用临时文件
+/// 
+/// ## 返回值
+/// 
+/// 返回 `CompatibleWav` 结构，包含兼容格式文件的路径。
+/// 
+/// ## 错误
+/// 
+/// - `AudioError::FileNotFound`: 输入文件不存在
+/// - `AudioError::NotAFile`: 输入路径不是文件
+/// - `AudioError::FfmpegExecution`: FFmpeg 转换失败
+/// - `AudioError::SampleRateMismatch`: 采样率不匹配
+/// - `AudioError::ChannelMismatch`: 声道数不匹配
+/// 
+/// ## 使用示例
+/// 
+/// ```rust
+/// use rs_voice_toolkit_audio::{ensure_whisper_compatible, AudioError};
+/// use std::path::PathBuf;
+/// 
+/// fn convert_audio() -> Result<(), AudioError> {
+///     // 使用临时文件
+///     let compatible = ensure_whisper_compatible("input.mp3", None)?;
+///     println!("转换完成: {}", compatible.path.display());
+///     
+///     // 指定输出路径
+///     let output_path = PathBuf::from("output_whisper.wav");
+///     let compatible = ensure_whisper_compatible("input.mp3", Some(output_path))?;
+///     println!("保存到: {}", compatible.path.display());
+///     
+///     Ok(())
+/// }
+/// ```
+/// 
+/// ## 技术细节
+/// 
+/// 此函数使用 FFmpeg 进行音频转换，应用以下转换：
+/// - 采样率: 16kHz
+/// - 声道数: 1 (单声道)
+/// - 位深度: 16-bit PCM
+/// - 格式: WAV
+/// 
+/// ## 性能考虑
+/// 
+/// - 转换过程需要创建临时文件，确保有足够的磁盘空间
+/// - 对于大文件，转换可能需要较长时间
+/// - 建议在后台线程中执行转换操作
+/// - 可以预先转换常用音频文件以提高性能
+/// 
+/// ## 注意事项
+/// 
+/// - 需要系统安装 FFmpeg
+/// - 如果未指定输出路径，将使用系统临时目录
+/// - 转换后的文件将被验证以确保符合 Whisper 要求
 pub fn ensure_whisper_compatible<P: AsRef<Path>>(
     input: P,
     output: Option<PathBuf>,
