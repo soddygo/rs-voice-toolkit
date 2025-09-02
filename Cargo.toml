@@ -8,7 +8,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 authors = ["rs-voice-toolkit contributors"]
 license = "MIT OR Apache-2.0"
@@ -27,7 +27,7 @@ whisper-rs = "0.15"
 # 音频处理
 hound = "3.5"                # WAV文件处理
 rubato = "0.16"              # 音频重采样
-ffmpeg-sidecar = "2.1"       # FFmpeg wrapper with auto-download
+ffmpeg-sidecar = "2.2"       # FFmpeg wrapper with auto-download
 
 # 异步运行时
 tokio = { version = "1.0", features = ["full"] }
