@@ -145,8 +145,10 @@ use thiserror::Error;
 use ffmpeg_sidecar::{command::FfmpegCommand};
 use hound::WavReader;
 use rubato::{
-    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    Async, FixedAsync, Resampler, SincInterpolationParameters, SincInterpolationType,
+    WindowFunction,
 };
+use audioadapter_buffers::direct::SequentialSliceOfVecs;
 
 #[derive(Debug, Error)]
 pub enum AudioError {
@@ -463,7 +465,7 @@ pub fn probe<P: AsRef<std::path::Path>>(input: P) -> Result<AudioMeta, AudioErro
         .to_lowercase();
     if ext == "wav" {
         let reader = WavReader::open(path).map_err(|e| AudioError::DecodeError {
-            reason: format!("打开 WAV 失败: {e}"),
+            reason: format!("Failed to open WAV: {e}"),
         })?;
         let spec = reader.spec();
         // hound::WavReader::duration() 返回总样本数（按声道交错计数）
@@ -672,28 +674,28 @@ pub fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Result<Resampl
     };
 
     // 创建重采样器 - 单声道
-    let mut resampler = SincFixedIn::<f32>::new(
+    let mut resampler = Async::<f32>::new_sinc(
         ratio,
         2.0, // 最大比率变化
-        params,
+        &params,
         samples.len(),
         1, // 单声道
+        FixedAsync::Input,
     )
-    .map_err(|e| AudioError::ResampleError(format!("创建重采样器失败: {e}")))?;
+    .map_err(|e| AudioError::ResampleError(format!("Failed to create resampler: {e}")))?;
 
-    // 准备输入数据 - rubato 需要 Vec<Vec<f32>> 格式（每个通道一个 Vec）
+    // 准备输入数据 - rubato 需要 SequentialSliceOfVecs 格式
     let input_data = vec![samples.to_vec()];
+    let input = SequentialSliceOfVecs::new(&input_data, 1, samples.len())
+        .map_err(|e| AudioError::ProcessingError(format!("Failed to prepare input data: {e}")))?;
 
     // 执行重采样
     let output_data = resampler
-        .process(&input_data, None)
-        .map_err(|e| AudioError::ProcessingError(format!("重采样失败: {e}")))?;
+        .process(&input, 0, None)
+        .map_err(|e| AudioError::ProcessingError(format!("Resampling failed: {e}")))?;
 
-    // 提取单声道输出
-    let output_samples = output_data
-        .into_iter()
-        .next()
-        .ok_or_else(|| AudioError::ProcessingError("重采样输出为空".into()))?;
+    // 提取单声道输出 (InterleavedOwned 格式，单声道直接取数据)
+    let output_samples = output_data.take_data();
 
     Ok(Resampled {
         samples: output_samples,
@@ -705,7 +707,7 @@ pub fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Result<Resampl
 /// 支持分块输入的连续重采样，使用 rubato 库实现
 pub struct StreamingResampler {
     /// 重采样器实例（可选，当输入输出采样率相同时为None）
-    resampler: Option<SincFixedIn<f32>>,
+    resampler: Option<Async<f32>>,
     /// 输入采样率 (Hz)
     from_rate: u32,
     /// 输出采样率 (Hz)
@@ -759,12 +761,13 @@ impl StreamingResampler {
         };
 
         // 创建重采样器 - 单声道
-        let resampler = SincFixedIn::<f32>::new(
+        let resampler = Async::<f32>::new_sinc(
             ratio, 2.0, // 最大比率变化
-            params, chunk_size, // 块大小
+            &params, chunk_size, // 块大小
             1,          // 单声道
+            FixedAsync::Input,
         )
-        .map_err(|e| AudioError::ResampleError(format!("创建重采样器失败: {e}")))?;
+        .map_err(|e| AudioError::ResampleError(format!("Failed to create resampler: {e}")))?;
 
         Ok(Self {
             resampler: Some(resampler),
@@ -788,7 +791,7 @@ impl StreamingResampler {
         let resampler = self
             .resampler
             .as_mut()
-            .ok_or_else(|| AudioError::ProcessingError("重采样器未初始化".into()))?;
+            .ok_or_else(|| AudioError::ProcessingError("Resampler not initialized".into()))?;
 
         // 将新输入添加到缓冲区
         self.buffer.extend_from_slice(input);
@@ -800,18 +803,18 @@ impl StreamingResampler {
             // 提取一个完整的块
             let chunk: Vec<f32> = self.buffer.drain(0..self.chunk_size).collect();
 
-            // 准备输入数据 - rubato 需要 Vec<Vec<f32>> 格式（每个通道一个 Vec）
+            // 准备输入数据 - rubato 需要 SequentialSliceOfVecs 格式
             let input_data = vec![chunk];
+            let input = SequentialSliceOfVecs::new(&input_data, 1, self.chunk_size)
+                .map_err(|e| AudioError::ProcessingError(format!("Failed to prepare input data: {e}")))?;
 
             // 执行重采样
             let output_data = resampler
-                .process(&input_data, None)
-                .map_err(|e| AudioError::ProcessingError(format!("重采样失败: {e}")))?;
+                .process(&input, 0, None)
+                .map_err(|e| AudioError::ProcessingError(format!("Resampling failed: {e}")))?;
 
             // 提取单声道输出并添加到结果
-            if let Some(channel_output) = output_data.into_iter().next() {
-                output.extend(channel_output);
-            }
+            output.extend(output_data.take_data());
         }
 
         Ok(output)
@@ -836,25 +839,16 @@ impl StreamingResampler {
                 padded_buffer.resize(self.chunk_size, 0.0);
 
                 let input_data = vec![padded_buffer];
-                let output_data = resampler
-                    .process(&input_data, None)
-                    .map_err(|e| AudioError::ProcessingError(format!("处理剩余样本失败: {e}")))?;
+                let input = SequentialSliceOfVecs::new(&input_data, 1, self.chunk_size)
+                    .map_err(|e| AudioError::ProcessingError(format!("Failed to prepare input data: {e}")))?;
 
-                if let Some(channel_output) = output_data.into_iter().next() {
-                    output.extend(channel_output);
-                }
+                let output_data = resampler
+                    .process(&input, 0, None)
+                    .map_err(|e| AudioError::ProcessingError(format!("Failed to process remaining samples: {e}")))?;
+
+                output.extend(output_data.take_data());
 
                 self.buffer.clear();
-            }
-
-            // 使用 process_partial 完成重采样
-            let empty_input: Option<&[Vec<f32>]> = None;
-            let final_output = resampler
-                .process_partial(empty_input, None)
-                .map_err(|e| AudioError::ProcessingError(format!("完成流式重采样失败: {e}")))?;
-
-            if let Some(channel_output) = final_output.into_iter().next() {
-                output.extend(channel_output);
             }
 
             Ok(output)
@@ -953,7 +947,7 @@ mod tests {
         let root_dir = crate_dir.parent().expect("audio crate has parent");
         let input = root_dir.join("fixtures/audio/jfk.wav");
         if !input.exists() {
-            log::warn!("跳过: 缺少测试音频 {}", input.display());
+            log::warn!("Skipping: missing test audio {}", input.display());
             return;
         }
         let meta = probe(&input).expect("应能探测 WAV 元数据");
@@ -1071,6 +1065,84 @@ mod tests {
     }
 
     #[test]
+    fn test_streaming_finalize_handles_partial_chunk() {
+        // 输入长度不是 chunk_size(1024) 整数倍，finalize 应正确处理剩余样本
+        let from = 16000u32;
+        let to = 24000u32;
+        let input: Vec<f32> = (0..2500).map(|i| i as f32 / 2500.0).collect();
+
+        let batch = resample(&input, from, to).unwrap().samples;
+
+        let mut sr = StreamingResampler::new(from, to).unwrap();
+        let mut stream_out = Vec::new();
+        for chunk in input.chunks(500) {
+            stream_out.extend(sr.process_chunk(chunk).unwrap());
+        }
+        let tail = sr.finalize().unwrap();
+        stream_out.extend(tail);
+
+        // 流式输出不应比批量输出短太多（允许边界差异）
+        let diff = (batch.len() as isize - stream_out.len() as isize).abs();
+        assert!(
+            diff <= 2500,
+            "Length difference too large: batch={}, stream={}, diff={}",
+            batch.len(),
+            stream_out.len(),
+            diff
+        );
+    }
+
+    #[test]
+    fn test_streaming_finalize_exact_chunk_boundary() {
+        // 输入长度恰好是 chunk_size 整数倍，finalize 不应丢数据
+        let from = 16000u32;
+        let to = 22050u32;
+        // 1024 * 3 = 3072 样本
+        let input: Vec<f32> = (0..3072).map(|i| (i as f32 * 0.01).sin()).collect();
+
+        let batch = resample(&input, from, to).unwrap().samples;
+
+        let mut sr = StreamingResampler::new(from, to).unwrap();
+        let mut stream_out = Vec::new();
+        for chunk in input.chunks(1024) {
+            stream_out.extend(sr.process_chunk(chunk).unwrap());
+        }
+        let tail = sr.finalize().unwrap();
+        stream_out.extend(tail);
+
+        // 整数倍输入时，流式和批量输出长度应非常接近
+        let diff = (batch.len() as isize - stream_out.len() as isize).abs();
+        assert!(
+            diff <= 100,
+            "Exact chunk boundary length diff should be small: batch={}, stream={}, diff={}",
+            batch.len(),
+            stream_out.len(),
+            diff
+        );
+    }
+
+    #[test]
+    fn test_streaming_same_rate_passthrough() {
+        // 相同采样率应直接透传，不经过重采样器
+        let input: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let mut sr = StreamingResampler::new(16000, 16000).unwrap();
+
+        let output = sr.process_chunk(&input).unwrap();
+        assert_eq!(output, input);
+
+        let tail = sr.finalize().unwrap();
+        assert!(tail.is_empty(), "相同采样率 finalize 不应有剩余数据");
+    }
+
+    #[test]
+    fn test_streaming_empty_input() {
+        let mut sr = StreamingResampler::new(16000, 24000).unwrap();
+
+        let output = sr.process_chunk(&[]).unwrap();
+        assert!(output.is_empty(), "空输入应返回空输出");
+    }
+
+    #[test]
     fn test_extreme_sample_rates() {
         // 测试超高的采样率
         let input: Vec<f32> = vec![0.0, 1.0, 0.0, -1.0];
@@ -1119,7 +1191,7 @@ mod tests {
         assert_eq!(same_rate.samples, input, "相同采样率应该返回原始样本");
         assert_eq!(same_rate.sample_rate, 16000, "输出采样率应该正确");
         
-        log::info!("基本重采样功能测试通过 - 降采样: {} -> {} 样本, 升采样: {} -> {} 样本",
+        log::info!("Basic resampling test passed - downsample: {} -> {} samples, upsample: {} -> {} samples",
                 input.len(), downsampled.samples.len(), input.len(), upsampled.samples.len());
     }
 }

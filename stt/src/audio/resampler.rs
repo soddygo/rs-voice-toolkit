@@ -7,8 +7,10 @@ use crate::error::{SttError, SttResult};
 use log::info;
 
 use rubato::{
-    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    Async, FixedAsync, Resampler, SincInterpolationParameters, SincInterpolationType,
+    WindowFunction,
 };
+use audioadapter_buffers::direct::SequentialSliceOfVecs;
 
 /// 音频重采样器
 pub struct AudioResampler {
@@ -24,11 +26,11 @@ impl AudioResampler {
     /// 创建新的重采样器
     pub fn new(source_rate: u32, target_rate: u32, channels: usize) -> SttResult<Self> {
         if source_rate == 0 || target_rate == 0 {
-            return Err(SttError::ConfigError("采样率不能为零".to_string()));
+            return Err(SttError::ConfigError("Sample rate cannot be zero".to_string()));
         }
 
         if channels == 0 {
-            return Err(SttError::ConfigError("声道数不能为零".to_string()));
+            return Err(SttError::ConfigError("Channel count cannot be zero".to_string()));
         }
 
         Ok(Self {
@@ -60,12 +62,12 @@ impl AudioResampler {
     /// 重采样音频数据
     pub fn resample(&self, input: &[f32]) -> SttResult<Vec<f32>> {
         if !self.needs_resampling() {
-            info!("采样率相同，无需重采样");
+            info!("Sample rates are the same, no resampling needed");
             return Ok(input.to_vec());
         }
 
         info!(
-            "开始重采样: {} Hz -> {} Hz",
+            "Starting resampling: {} Hz -> {} Hz",
             self.source_rate, self.target_rate
         );
 
@@ -83,14 +85,15 @@ impl AudioResampler {
         };
 
         // 创建重采样器
-        let mut resampler = SincFixedIn::<f32>::new(
+        let mut resampler = Async::<f32>::new_sinc(
             self.ratio(),
             2.0, // 最大相对误差
-            params,
+            &params,
             input_frames,
             self.channels,
+            FixedAsync::Input,
         )
-        .map_err(|e| SttError::ResamplingError(format!("创建重采样器失败: {e}")))?;
+        .map_err(|e| SttError::ResamplingError(format!("Failed to create resampler: {e}")))?;
 
         // 将交错音频数据转换为分离的声道数据
         let mut input_channels = vec![Vec::with_capacity(input_frames); self.channels];
@@ -99,24 +102,23 @@ impl AudioResampler {
             input_channels[channel].push(sample);
         }
 
+        // 准备输入数据
+        let input_adapter = SequentialSliceOfVecs::new(&input_channels, self.channels, input_frames)
+            .map_err(|e| SttError::ResamplingError(format!("Failed to prepare input data: {e}")))?;
+
         // 执行重采样
-        let output_channels = resampler
-            .process(&input_channels, None)
-            .map_err(|e| SttError::ResamplingError(format!("重采样失败: {e}")))?;
+        let output_data = resampler
+            .process(&input_adapter, 0, None)
+            .map_err(|e| SttError::ResamplingError(format!("Resampling failed: {e}")))?;
+
+        // 提取输出数据
+        let output_channels_data = output_data.take_data();
 
         // 将分离的声道数据转换回交错格式
-        let mut output = Vec::with_capacity(output_frames * self.channels);
-        for frame in 0..output_frames {
-            for ch_data in output_channels.iter().take(self.channels) {
-                if frame < ch_data.len() {
-                    output.push(ch_data[frame]);
-                } else {
-                    output.push(0.0);
-                }
-            }
-        }
+        // InterleavedOwned 格式是交错的，直接使用
+        let output = output_channels_data;
 
-        info!("重采样完成: {input_frames} 帧 -> {output_frames} 帧");
+        info!("Resampling done: {input_frames} frames -> {output_frames} frames");
         Ok(output)
     }
 
@@ -217,7 +219,7 @@ impl AdvancedResampler {
         }
 
         info!(
-            "开始高质量重采样: {} Hz -> {} Hz (质量: {:?})",
+            "Starting high-quality resampling: {} Hz -> {} Hz (quality: {:?})",
             self.base.source_rate, self.base.target_rate, self.quality
         );
 
@@ -232,14 +234,15 @@ impl AdvancedResampler {
 
         let input_frames = input.len() / self.base.channels;
 
-        let mut resampler = SincFixedIn::<f32>::new(
+        let mut resampler = Async::<f32>::new_sinc(
             self.base.ratio(),
             2.0,
-            params,
+            &params,
             input_frames,
             self.base.channels,
+            FixedAsync::Input,
         )
-        .map_err(|e| SttError::ResamplingError(format!("创建高质量重采样器失败: {e}")))?;
+        .map_err(|e| SttError::ResamplingError(format!("Failed to create high-quality resampler: {e}")))?;
 
         // 执行重采样（与基础版本相同的逻辑）
         let mut input_channels = vec![Vec::with_capacity(input_frames); self.base.channels];
@@ -248,22 +251,17 @@ impl AdvancedResampler {
             input_channels[channel].push(sample);
         }
 
-        let output_channels = resampler
-            .process(&input_channels, None)
-            .map_err(|e| SttError::ResamplingError(format!("高质量重采样失败: {e}")))?;
+        // 准备输入数据
+        let input_adapter = SequentialSliceOfVecs::new(&input_channels, self.base.channels, input_frames)
+            .map_err(|e| SttError::ResamplingError(format!("Failed to prepare input data: {e}")))?;
 
-        let output_frames = (input_frames as f64 * self.base.ratio()).round() as usize;
-        let mut output = Vec::with_capacity(output_frames * self.base.channels);
+        // 执行重采样
+        let output_data = resampler
+            .process(&input_adapter, 0, None)
+            .map_err(|e| SttError::ResamplingError(format!("High-quality resampling failed: {e}")))?;
 
-        for frame in 0..output_frames {
-            for ch_data in output_channels.iter().take(self.base.channels) {
-                if frame < ch_data.len() {
-                    output.push(ch_data[frame]);
-                } else {
-                    output.push(0.0);
-                }
-            }
-        }
+        // 提取输出数据
+        let output = output_data.take_data();
 
         Ok(output)
     }

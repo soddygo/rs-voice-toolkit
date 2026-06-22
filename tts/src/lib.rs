@@ -568,12 +568,13 @@ impl Default for TtsConfig {
 /// - **离线需求**: 等待Piper引擎实现
 /// - **专业需求**: 等待Coqui引擎实现
 /// - **嵌入式设备**: 考虑未来的Piper引擎
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum TtsEngineType {
     /// Index-TTS 引擎
-    /// 
+    ///
     /// 当前默认和唯一完整实现的TTS引擎。
     /// 提供高质量的语音合成功能，支持多种语言和配置选项。
+    #[default]
     IndexTts,
     
     /// Piper 引擎（未来支持）
@@ -601,12 +602,6 @@ pub enum TtsEngineType {
     /// 目前尚未实现，计划未来版本支持。
     #[allow(dead_code)]
     Coqui,
-}
-
-impl Default for TtsEngineType {
-    fn default() -> Self {
-        Self::IndexTts
-    }
 }
 
 /// TTS引擎接口

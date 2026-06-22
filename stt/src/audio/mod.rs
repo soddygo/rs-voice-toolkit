@@ -11,4 +11,4 @@ pub use resampler::AudioResampler;
 pub use utils::*;
 
 // 重新导出独立音频模块的类型
-pub use audio_utils::{AudioConfig, AudioFormat};
+pub use rs_voice_toolkit_audio::{AudioConfig, AudioFormat};

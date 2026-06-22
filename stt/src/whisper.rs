@@ -4,7 +4,7 @@
 
 use crate::audio::AudioData;
 use crate::error::{SttError, SttResult};
-use audio_utils as audio_lib;
+use rs_voice_toolkit_audio as audio_lib;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

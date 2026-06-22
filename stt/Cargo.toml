@@ -1,6 +1,6 @@
 [package]
 name = "rs-voice-toolkit-stt"
-version = "0.16.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -19,6 +19,7 @@ whisper-rs = { workspace = true }
 hound = { workspace = true }
 ffmpeg-sidecar = { workspace = true }
 rubato = { workspace = true }
+audioadapter-buffers = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
@@ -26,7 +27,7 @@ log = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 sysinfo = "0.30"
-audio_utils = { package = "rs-voice-toolkit-audio", version = "0.16.0", path = "../audio" }
+rs-voice-toolkit-audio = { workspace = true }
 
 [features]
 default = []
