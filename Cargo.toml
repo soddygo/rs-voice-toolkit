@@ -22,9 +22,9 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 # 内部 crate
-rs-voice-toolkit-stt = { path = "stt" }
-rs-voice-toolkit-tts = { path = "tts" }
-rs-voice-toolkit-audio = { path = "audio" }
+rs-voice-toolkit-stt = { version = "0.16.1", path = "stt" }
+rs-voice-toolkit-tts = { version = "0.16.1", path = "tts" }
+rs-voice-toolkit-audio = { version = "0.16.1", path = "audio" }
 
 # 语音转文本核心依赖
 whisper-rs = "0.16"
